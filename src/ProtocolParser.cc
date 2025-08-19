@@ -1,6 +1,7 @@
 #include "ProtocolParser.h"
 #include "Buffer.h"
 #include "Logger.h"
+#include "KeyRecommander.h"
 #include <sstream>
 #include <iostream>
 #include <cstring>
@@ -31,13 +32,13 @@ bool ProtocolParser::tryParse(Buffer* buf, uint32_t& msgId, std::string& content
     uint32_t messageId = 0;
     const char* p = buf->peek();
     std::memcpy(&messageLen, p, 4);
-    std::memcpy(&messageId, p, 4);
+    std::memcpy(&messageId, p + 4, 4);
     uint32_t bodyLen = ntohl(messageLen);
     msgId = ntohl(messageId);
 
     //防御阈值
     if (bodyLen > 100 * 1024 * 1024) {
-        //严重异常，生产环境断开连接
+        LOG_FATAL("message overflow the maxsize\n");
         return false;
     }
 
@@ -69,7 +70,7 @@ void ProtocolParser::parseAndDispatch(const TcpConnectionPtr& conn, Buffer* buf)
     }
 }
 
-void ProtocolParser::sendFrame(const TcpConnection& conn, uint32_t msgId, const std::string& content) {
+void ProtocolParser::sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content) {
     uint32_t lenNet = htonl(static_cast<uint32_t>(content.size()));
     uint32_t idNet  = htonl(msgId);
 
@@ -94,16 +95,9 @@ void ProtocolParser::setDefaultHandler(TaskHandler handler) {
 
 // 任务1：处理推荐关键词请求
 void ProtocolParser::handleRecommendKeywords(const TcpConnectionPtr& conn, const std::string& content) {
-    std::cout << "Handling recommend keywords request: " << content << std::endl;
-    
-    // 这里实现推荐关键词的逻辑
-    // 例如：基于输入内容推荐相关关键词
-    
-    // 构造响应消息：100:推荐的关键词列表
-    std::string response = std::to_string(RESPONSE_RECOMMEND_KEYWORDS) + ":" + 
-                          "推荐关键词: " + content + "相关词1,相关词2,相关词3";
-    
-    sendFrame(conn, RESPONSE_RECOMMEND_KEYWORDS, responseBody);
+    // 使用关键词推荐模块，内部已构造 JSON 并发送
+    KeyRecommander recommander(content, conn);
+    recommander.execute();
 }
 
 // 任务2：处理网页搜索请求
@@ -117,5 +111,5 @@ void ProtocolParser::handleSearchWebpages(const TcpConnectionPtr& conn, const st
     std::string response = std::to_string(RESPONSE_SEARCH_WEBPAGES) + ":" + 
                           "搜索结果: " + content + " - 网页1,网页2,网页3";
     
-    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, responseBody);
+    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, response);
 }

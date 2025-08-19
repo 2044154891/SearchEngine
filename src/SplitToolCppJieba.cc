@@ -1,6 +1,8 @@
 #include "SplitToolCppJieba.h"
 #include <iostream>
 
+std::unique_ptr<SplitToolCppJieba> SplitToolCppJieba::_instance = nullptr;
+std::once_flag SplitToolCppJieba::_onceFlag;
 
 // 静态成员初始化
 std::unique_ptr<cppjieba::Jieba> SplitToolCppJieba::_jieba = nullptr;
@@ -17,9 +19,15 @@ const char* const STOP_WORD_PATH = "/home/zhang/Search_Engine/include/cppjieba/d
 /**
  * SplitToolCppJieba implementation
  */
- SplitToolCppJieba& SplitToolCppJieba::getInstance() {
-    static SplitToolCppJieba instance;
-    return instance;
+SplitToolCppJieba* SplitToolCppJieba::getInstance() {
+    std::call_once(_onceFlag, []{
+        _instance.reset(new SplitToolCppJieba());
+    });
+    return _instance.get();
+}
+
+void SplitToolCppJieba::destroy() {
+    _instance.reset(); // 析构里会清理 _jieba
 }
 
 SplitToolCppJieba::SplitToolCppJieba() {
@@ -36,29 +44,19 @@ SplitToolCppJieba::SplitToolCppJieba() {
         );
         
         if (!_jieba) {
-            std::cerr << "Error: Failed to initialize Jieba object" << std::endl;
+            std::cerr << "Error: Failed to initialize Jieba object" << "\n";
             throw std::runtime_error("Jieba initialization failed");
         }
         
         _initialized = true;
-        std::cout << "SplitToolCppJieba singleton initialized successfully" << std::endl;
+        std::cout << "SplitToolCppJieba singleton initialized successfully" << "\n";
     }
 }
 
-vector<string> SplitToolCppJieba::cut(const string& sentence) {
-    if (!_jieba) {
-        std::cerr << "Error: Jieba object is not initialized" << "\n";
-        return {};
-    }
-    
-    vector<string> words;
-    try {
-        // 使用jieba进行分词，true表示全模式分词
-        _jieba->Cut(sentence, words, true);
-    } catch (const std::exception& e) {
-        std::cerr << "Error during word segmentation: " << e.what() << "\n";
-        return {};
-    }
-    
+std::vector<std::string> SplitToolCppJieba::cut(const std::string& sentence) {
+    std::lock_guard<std::mutex> lock(_mutex); // 保险起见给 Cut 加锁
+    if (!_jieba) return {};
+    std::vector<std::string> words;
+    _jieba->Cut(sentence, words, true);
     return words;
 }

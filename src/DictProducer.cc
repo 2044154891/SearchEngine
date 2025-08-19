@@ -189,22 +189,12 @@ void DictProducer::buildDict(){
         return a.second > b.second;
     });
 
-    string dict_path = read_config_value(Config::configFilePath, "dictionary_path");
-    ofstream ofs(dict_path);
-    if (!ofs.is_open()) {
-        std::cerr << "无法打开字典文件进行写入: " << dict_path << "\n";
-        return;
-    }
-    for (const auto& [word, freq] : _dict) {
-        ofs << word << " " << freq << "\n";
-    }
-    ofs.close();
-    std::cout << "字典已成功写入到文件: " << dict_path << "\n";
+    store();
 
 }
 
 void DictProducer::createIndex(){
-    int i = 1; // 记录下标
+    int i = 0; // 记录下标
     for (auto elem : _dict) {
         string word = elem.first;
         size_t charNums = word.size() / getByteNum_UTF8(word[0]);
@@ -227,7 +217,11 @@ void DictProducer::store() {
         return;
     }
     for (const auto& [word, index] : _index) {
-        ofs << word << " " << index << "\n";
+        ofs << word;
+        for (const auto &id : index) {
+            ofs << ' ' << id; // 空格分隔的一串整数
+        }
+        ofs << "\n";
     }
     ofs.close();
     std::cout << "字典索引已成功写入到文件: " << dict_index_path << "\n";

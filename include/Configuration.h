@@ -2,6 +2,9 @@
 #define CONFIGURATION_H
 
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include <map>
 #include <set>
 #include <memory>

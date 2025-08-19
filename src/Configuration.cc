@@ -16,7 +16,7 @@ Configuration::Configuration(const std::string& filepath) {
     _stopWordList.clear();
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "无法打开配置文件: " << filepath << std::endl;
+        std::cerr << "无法打开配置文件: " << filepath << "\n";
         return;
     }
     std::string line;
@@ -38,29 +38,29 @@ Configuration::Configuration(const std::string& filepath) {
     }
     file.close();
     // 加载停用词表
-    std::ifstream stopWordFile(_configMap["chinese_stop_words"]);
-    if (!stopWordFile.is_open()) {
+    std::ifstream stopWordFilechinese(_configMap["chinese_stop_words"]);
+    if (!stopWordFilechinese.is_open()) {
         std::cerr << "无法打开停用词文件: " << _configMap["chinese_stop_words"] << std::endl;
         return;
     }
-    std::string line;
-    while (std::getline(stopWordFile, line)) {
+    line.clear();
+    while (std::getline(stopWordFilechinese, line)) {
         _stopWordList.insert(line);
     }
-    stopWordFile.close();
+    stopWordFilechinese.close();
     // 加载停用词表
-    std::ifstream stopWordFile(_configMap["english_stop_words"]);
-    if (!stopWordFile.is_open()) {
+    std::ifstream stopWordFileenglish(_configMap["english_stop_words"]);
+    if (!stopWordFileenglish.is_open()) {
         std::cerr << "无法打开停用词文件: " << _configMap["english_stop_words"] << std::endl;
         return;
     }
-    std::string line;
-    while (std::getline(stopWordFile, line)) {
+    line.clear();
+    while (std::getline(stopWordFileenglish, line)) {
         _stopWordList.insert(line);
     }
+    stopWordFileenglish.close();
     _stopWordList.insert(" ");
     _stopWordList.insert("\n");
-    stopWordFile.close();
 }
 
 Configuration::~Configuration() {

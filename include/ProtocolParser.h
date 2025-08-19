@@ -3,6 +3,7 @@
 
 #include "Buffer.h"
 #include "TcpConnection.h"
+#include "KeyRecommander.h"
 #include <functional>
 #include <string>
 #include <map>
@@ -37,7 +38,7 @@ private:
     bool tryParse(Buffer* buf, uint32_t& msgId, std::string& content);
 
     //按帧协议发送消息
-    bool sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content);
+    void sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content);
     
     // 任务处理器映射表
     std::map<int, TaskHandler> _taskHandlers;
