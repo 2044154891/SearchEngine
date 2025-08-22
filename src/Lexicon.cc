@@ -1,6 +1,7 @@
 #include "Lexicon.h"
 #include "Configuration.h"
 #include "Config.h"
+#include "Logger.h"
 
 #include <fstream>
 #include <sstream>
@@ -25,6 +26,7 @@ Lexicon::Lexicon() {
     const std::string dictPath = itDict->second;
     const std::string indexPath = itIndex->second;
 
+    LOG_INFO("%s:dictpath\n",dictPath.c_str());
     // 加载词典与索引（与之前 load 内容一致）
     std::ifstream df(dictPath);
     if (!df.is_open()) {

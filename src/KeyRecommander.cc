@@ -1,10 +1,7 @@
 #include "KeyRecommander.h"
-#include "nlohmann/json.hpp"
 #include "Lexicon.h"
-#include <nlohmann/json.hpp>
 
 #include <algorithm>
-#include <sstream>
 #include <vector>
 #include <set>
 
@@ -66,26 +63,17 @@ static std::vector<uint32_t> utf8ToCodepoints(const std::string &s)
     return out;
 }
 
-KeyRecommander::KeyRecommander(const std::string &query, const TcpConnectionPtr &conn)
-    : _conn(conn)
-    , _originalQuery(query);
+KeyRecommander::KeyRecommander(const std::string &query)
+    : _originalQuery(query)
 {
     auto split = SplitToolCppJieba::getInstance()->cut(query);
-    if (!split.empty())
-    {
-        _queryWord = split.back();
-
-    }
-    else
-    {
-        _queryWord = query;
-    }
+    _queryWord = split.empty() ? query : split.back();
 }
 
 void KeyRecommander::execute()
 {
     queryIndexTable();
-    response();
+    buildSuggestions();
 }
 
 void KeyRecommander::queryIndexTable()
@@ -158,35 +146,20 @@ int KeyRecommander::distance(const std::string &rhs) const
     return prev.back();
 }
 
-void KeyRecommander::response()
+void KeyRecommander::buildSuggestions()
 {
-    size_t pos = _originalQuery.find(_queryWord);
-    if (pos != std::string::npos) {
-        _originalQuery.erase(pos, _queryWord.size());
+    _fullSuggestions.clear();
+    size_t pos = _originalQuery.size();
+    if (!_queryWord.empty()) {
+        size_t found = _originalQuery.rfind(_queryWord);
+        if (found != std::string::npos) pos = found;
     }
-    std::vector<std::string> ans;
-    while (!_resultQue.empty()) {
-        ans.push_back(_originalQuery + _resultQue.top());
-        _resultQue.pop();
+    std::vector<MyResult> res;
+    res.reserve(_resultQue.size());
+    while (!_resultQue.empty()) { res.push_back(_resultQue.top()); _resultQue.pop(); }
+    for (const auto &r : res) {
+        std::string s = _originalQuery.substr(0, pos);
+        s.append(r.word);
+        _fullSuggestions.push_back(std::move(s));
     }
-    std::reserve(ans.begin(), ans.end());
-    nlohmann::json j;
-    j["id"] = 100;
-    j["query"] = _originalQuery;
-    j["suggestions"] = full;
-    sendFrame(conn, 100, j.dump());
-}
-
-void KeyRecommander::sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content) {
-    uint32_t lenNet = htonl(static_cast<uint32_t>(content.size()));
-    uint32_t idNet  = htonl(msgId);
-
-    std::string out;
-    out.resize(8 + content.size());
-    std::memcpy(&out[0], &lenNet, 4);
-    std::memcpy(&out[4], &idNet, 4);
-    if (!content.empty()) {
-        std::memcpy(&out[8], content.data(), content.size());
-    }
-    conn->send(out);
 }

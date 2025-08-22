@@ -8,6 +8,9 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <regex>
+
+#include "Logger.h"
 
 class Configuration
 {

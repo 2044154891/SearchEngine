@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -Wextra -O2
+CXXFLAGS = -std=c++11 -Wall -Wextra -O2 -I../include -I.
 TARGET = rss_parser
 SOURCES = main.cpp rss_reader.cpp tinyxml2.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -17,10 +17,14 @@ $(TARGET): $(OBJECTS)
 
 # 清理生成的文件
 clean:
-	rm -f $(OBJECTS) $(TARGET) pagelib.txt
+	rm -f $(OBJECTS) $(TARGET) pagelib.txt offsetlib.txt
 
 # 运行程序
 run: $(TARGET)
+	./$(TARGET)
+
+# 扫描某目录并生成
+run_dir: $(TARGET)
 	./$(TARGET)
 
 # 安装依赖（如果需要）

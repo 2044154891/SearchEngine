@@ -46,7 +46,6 @@ public:
     void buildSuggestions();
     const std::vector<std::string>& suggestions() const { return _fullSuggestions; }
 
-    void sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content);
 
 private:
     std::string _originalQuery;                          // 原始完整查询

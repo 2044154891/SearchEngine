@@ -24,10 +24,13 @@ void Logger::log(std::string msg)
     {
     case INFO:
         pre = "[INFO]";
+        break;
     case ERROR:
         pre = "[ERROR]";
+        break;
     case FATAL:
         pre = "[FATAL]";
+        break;
     case DEBUG:
         pre = "[DEBUG]";
     default:

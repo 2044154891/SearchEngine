@@ -2,6 +2,7 @@
 #include "Buffer.h"
 #include "Logger.h"
 #include "KeyRecommander.h"
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <iostream>
 #include <cstring>
@@ -51,17 +52,24 @@ bool ProtocolParser::tryParse(Buffer* buf, uint32_t& msgId, std::string& content
 }
 
 void ProtocolParser::parseAndDispatch(const TcpConnectionPtr& conn, Buffer* buf) {
+    std::cout << "parseAndDispatch called, buffer readable bytes: " << buf->readableBytes() << std::endl;
+    
     uint32_t msgId = 0;
     std::string content;
     if (!tryParse(buf, msgId, content)) {
-        //数据不够
+        std::cout << "tryParse failed, not enough data" << std::endl;
         return;
     }
+    
+    std::cout << "Parsed message: ID=" << msgId << ", content='" << content << "'" << std::endl;
+    
     int taskId = static_cast<int>(msgId);
     auto it = _taskHandlers.find(taskId);
     if (it != _taskHandlers.end()) {
+        std::cout << "Found handler for task ID: " << taskId << std::endl;
         it->second(conn, content);
     } else {
+        std::cout << "No handler found for task ID: " << taskId << std::endl;
         if (_defaultHandler) {
             _defaultHandler(conn, content);
         } else {
@@ -71,6 +79,8 @@ void ProtocolParser::parseAndDispatch(const TcpConnectionPtr& conn, Buffer* buf)
 }
 
 void ProtocolParser::sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, const std::string& content) {
+    std::cout << "sendFrame: sending ID=" << msgId << ", content='" << content << "'" << std::endl;
+    
     uint32_t lenNet = htonl(static_cast<uint32_t>(content.size()));
     uint32_t idNet  = htonl(msgId);
 
@@ -81,7 +91,10 @@ void ProtocolParser::sendFrame(const TcpConnectionPtr& conn, uint32_t msgId, con
     if (!content.empty()) {
         std::memcpy(&out[8], content.data(), content.size());
     }
+    
+    std::cout << "sendFrame: sending " << out.size() << " bytes" << std::endl;
     conn->send(out);
+    std::cout << "sendFrame: sent successfully" << std::endl;
 }
 
 void ProtocolParser::registerTaskHandler(int taskId, TaskHandler handler) {
@@ -95,9 +108,16 @@ void ProtocolParser::setDefaultHandler(TaskHandler handler) {
 
 // 任务1：处理推荐关键词请求
 void ProtocolParser::handleRecommendKeywords(const TcpConnectionPtr& conn, const std::string& content) {
-    // 使用关键词推荐模块，内部已构造 JSON 并发送
-    KeyRecommander recommander(content, conn);
+    KeyRecommander recommander(content);
     recommander.execute();
+    const auto &full = recommander.suggestions();
+
+    nlohmann::json j;
+    j["id"] = RESPONSE_RECOMMEND_KEYWORDS; // 100
+    j["query"] = content;
+    j["suggestions"] = full;
+
+    sendFrame(conn, RESPONSE_RECOMMEND_KEYWORDS, j.dump());
 }
 
 // 任务2：处理网页搜索请求

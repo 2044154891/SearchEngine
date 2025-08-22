@@ -46,16 +46,14 @@ private:
     // 默认任务处理器
     TaskHandler _defaultHandler;
     
-    // 任务ID常量定义
-    static const int TASK_RECOMMEND_KEYWORDS = 1;    // 推荐关键词任务
-    static const int TASK_SEARCH_WEBPAGES = 2;       // 搜索网页任务
-    
-    // 响应ID常量定义
-    static const int RESPONSE_RECOMMEND_KEYWORDS = 100;  // 推荐关键词响应
-    static const int RESPONSE_SEARCH_WEBPAGES = 200;     // 搜索网页响应
+    // 任务/响应ID常量定义（constexpr避免ODR定义问题）
+    static constexpr int TASK_RECOMMEND_KEYWORDS = 1;    // 推荐关键词任务
+    static constexpr int TASK_SEARCH_WEBPAGES   = 2;     // 搜索网页任务
+    static constexpr int RESPONSE_RECOMMEND_KEYWORDS = 100;  // 推荐关键词响应
+    static constexpr int RESPONSE_SEARCH_WEBPAGES     = 200; // 搜索网页响应
 
-    static const size_t kMessageLen = 4;
-    static const size_t kMessageId = 4;
+    static constexpr size_t kMessageLen = 4;
+    static constexpr size_t kMessageId  = 4;
     
     // 具体的任务处理方法
     void handleRecommendKeywords(const TcpConnectionPtr& conn, const std::string& content);

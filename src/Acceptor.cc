@@ -23,6 +23,7 @@ Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reusepor
     , acceptChannel_(loop, acceptSocket_.fd())
     , listening_(false)
 {
+    LOG_INFO("Acceptor::Acceptor, start listening");
     acceptSocket_.setReuseAddr(true);
     acceptSocket_.setReusePort(reuseport);
     acceptSocket_.bindAddress(listenAddr);
@@ -68,5 +69,6 @@ void Acceptor::listen()
     listening_ =true;
     acceptSocket_.listen(); //listen
     acceptChannel_.enableReading(); //acceptChannel_注册至Poller !重要
+    LOG_INFO("Acceptor::listen \n");
 }
 

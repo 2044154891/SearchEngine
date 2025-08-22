@@ -3,15 +3,57 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <cstring>
 
 using namespace tinyxml2;
 
-RssReader::RssReader()
+RssReader::RssReader(const std::string& ripedir, const std::string& storedir, const std::string& offsetfile)
+    : _ripedir(ripedir)
+    , _storedir(storedir)
+    , _offsetfile(offsetfile)
 {
+    _offsetMap.clear();
 }
+
+void RssReader::processAll()
+{
+    DIR* dir = opendir(_ripedir.c_str());
+    if (!dir) {
+        std::cerr << "Error: Cannot open directory: " << _ripedir << "\n";
+        return;
+    }
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string name = entry->d_name;
+        if (name == "." || name == "..") continue;
+        if (name.empty() || name[0] == '.') continue; // skip hidden
+        std::string fullpath = _ripedir + "/" + name;
+        struct stat st{};
+        if (stat(fullpath.c_str(), &st) != 0) continue;
+        if (!S_ISREG(st.st_mode)) continue;
+        if (!isXmlFile(name)) continue;
+        parseRss(fullpath);
+    }
+    closedir(dir);
+}
+
 
 void RssReader::parseRss(const std::string& filename)
 {
+    std::ofstream storef(_storedir, std::ios::out | std::ios::app | std::ios::binary);
+    if(!storef.is_open()) {
+        std::cerr << "Error opening output file: " << _storedir << std::endl;
+        return;
+    }
+    std::ofstream offsetOut(_offsetfile, std::ios::out | std::ios::app);
+    if(!offsetOut.is_open()) {
+        std::cerr << "Error opening offset file: " << _offsetfile << std::endl;
+        return;
+    }
+    
     XMLDocument doc;
     XMLError error = doc.LoadFile(filename.c_str());
     
@@ -52,7 +94,7 @@ void RssReader::parseRss(const std::string& filename)
             rssItem.link = linkElem->GetText();
         }
         
-        // 获取description
+        // 获取description ,暂时不用该描述
         XMLElement* descElem = item->FirstChildElement("description");
         if (descElem && descElem->GetText()) {
             std::string desc = descElem->GetText();
@@ -72,14 +114,15 @@ void RssReader::parseRss(const std::string& filename)
             rssItem.content = rssItem.description;
         }
         
-        // 添加到vector中
-        _rss.push_back(rssItem);
+        // 边解析边写入文档和偏移
+        ++_docId;
+        writeOneDoc(storef, offsetOut, static_cast<int>(_docId), rssItem.title, rssItem.link, rssItem.content);
         
         // 移动到下一个item
         item = item->NextSiblingElement("item");
     }
     
-    std::cout << "Successfully parsed " << _rss.size() << " RSS items" << std::endl;
+    std::cout << "Parsed file: " << filename << std::endl;
 }
 
 std::string RssReader::removeHtmlTags(const std::string& html)
@@ -123,24 +166,38 @@ std::string RssReader::removeHtmlTags(const std::string& html)
 
 void RssReader::dump(const std::string& filename)
 {
-    std::ofstream outFile(filename);
-    if (!outFile.is_open()) {
-        std::cerr << "Error opening output file: " << filename << std::endl;
-        return;
-    }
-    
-    int docId = 1;
-    for (const auto& item : _rss) {
-        outFile << "<doc>\n";
-        outFile << "\t<docid>" << docId << "</docid>\n";
-        outFile << "\t<title>" << item.title << "</title>\n";
-        outFile << "\t<link>" << item.link << "</link>\n";
-        outFile << "\t<description>" << item.description << "</description>\n";
-        outFile << "\t<content>" << item.content << "</content>\n";
-        outFile << "</doc>\n";
-        docId++;
-    }
-    
-    outFile.close();
-    std::cout << "Successfully wrote " << (_rss.size()) << " documents to " << filename << std::endl;
+    // 当前实现为流式写入，dump保留做兼容，不执行额外操作
+    (void)filename;
+}
+
+bool RssReader::isXmlFile(const std::string& filename) const
+{
+    auto pos = filename.find_last_of('.');
+    if (pos == std::string::npos) return false;
+    std::string ext = filename.substr(pos + 1);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    return (ext == "xml" || ext == "rss");
+}
+
+bool RssReader::writeOneDoc(std::ofstream &out, std::ofstream &offsetOut,
+                     int docId,
+                     const std::string &title,
+                     const std::string &link,
+                     const std::string &content)
+{
+    std::streampos start = out.tellp();
+    out << "<doc>\n";
+    out << "\t<docid>" << docId << "</docid>\n";
+    out << "\t<title>" << title << "</title>\n";
+    out << "\t<link>" << link << "</link>\n";
+    out << "\t<content>" << content << "</content>\n";
+    out << "</doc>\n";
+    out.flush();
+    std::streampos end = out.tellp();
+    int offset = static_cast<int>(start);
+    int length = static_cast<int>(end - start);
+    _offsetMap[docId] = std::make_pair(offset, length);
+    offsetOut << docId << ' ' << offset << ' ' << length << '\n';
+    offsetOut.flush();
+    return true;
 }

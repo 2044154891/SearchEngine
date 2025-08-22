@@ -50,8 +50,11 @@ void TcpServer::start()
 {
     if(started_.fetch_add(1) == 0) //防止一个TcpServer对象被start多次
     {
+        LOG_INFO("TcpServer::start() - starting thread pool");
         threadPool_->start(threadInitCallback_);  //启动底层的loop线程池
+        LOG_INFO("TcpServer::start() - calling runInLoop for Acceptor::listen");
         loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
+        LOG_INFO("TcpServer::start() - runInLoop called");
     }
 }
 
