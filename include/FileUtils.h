@@ -23,7 +23,7 @@ using std::cout;
 using std::cerr;
 
 // 检查文件是否为普通文件
-bool is_regular_file(const string& path) {
+inline bool is_regular_file(const string& path) {
     struct stat path_stat;
     if (stat(path.c_str(), &path_stat) != 0) {
         return false;
@@ -32,7 +32,7 @@ bool is_regular_file(const string& path) {
 }
 
 // 获取文件扩展名
-string get_file_extension(const string& filename) {
+inline string get_file_extension(const string& filename) {
     size_t pos = filename.find_last_of('.');
     if (pos != string::npos) {
         return filename.substr(pos + 1);
@@ -41,7 +41,7 @@ string get_file_extension(const string& filename) {
 }
 
 // 获取文件名
-string get_file_name(const string& path) {
+inline string get_file_name(const string& path) {
     size_t pos = path.find_last_of('/');
     if (pos != string::npos) {
         return path.substr(pos + 1);
@@ -51,7 +51,7 @@ string get_file_name(const string& path) {
 
 
 // 读取配置文件的函数
-string read_config_value(const string& config_file, const string& key) {
+inline string read_config_value(const string& config_file, const string& key) {
     ifstream config(config_file);
     if (!config) {
         cerr << "Error: Cannot open config file: " << config_file << "\n";

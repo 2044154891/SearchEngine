@@ -1,4 +1,4 @@
-All: bin bin/DataClean bin/CreateDict bin/SearchEngine
+All: bin bin/DataClean bin/CreateDict bin/SearchEngine bin/BuildIndex
 
 bin:
 	mkdir -p bin
@@ -93,9 +93,31 @@ bin/Lexicon.o: src/Lexicon.cc include/Lexicon.h
 bin/KeyRecommander.o: src/KeyRecommander.cc include/KeyRecommander.h
 	g++ -g -c src/KeyRecommander.cc -o bin/KeyRecommander.o -I include
 
+bin/PageLibPreprocessor.o: src/PageLibPreprocessor.cc include/PageLibPreprocessor.h
+	g++ -g -c src/PageLibPreprocessor.cc -o bin/PageLibPreprocessor.o -I include
+
+bin/WebPageSearcher.o: src/WebPageSearcher.cc include/WebPageSearcher.h
+	g++ -g -c src/WebPageSearcher.cc -o bin/WebPageSearcher.o -I include
+
+# BuildIndex 目标 - 独立的索引构建程序（包含SimHash去重）
+bin/BuildIndex: bin/BuildIndex.o bin/RssReader.o bin/tinyxml2.o bin/PageLibPreprocessor.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Configuration.o bin/DictProducer.o bin/Lexicon.o bin/Logger.o bin/Timestamp.o bin/Deduplication.o
+	g++ -g -o bin/BuildIndex bin/BuildIndex.o bin/RssReader.o bin/tinyxml2.o bin/PageLibPreprocessor.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Configuration.o bin/DictProducer.o bin/Lexicon.o bin/Logger.o bin/Timestamp.o bin/Deduplication.o -pthread
+
+bin/BuildIndex.o: src/BuildIndex.cc
+	g++ -g -c src/BuildIndex.cc -o bin/BuildIndex.o -I include -I RSS -I simhash
+
+bin/Deduplication.o: simhash/Deduplication.cc simhash/Deduplication.h
+	g++ -g -c simhash/Deduplication.cc -o bin/Deduplication.o -I include -I simhash
+
+bin/RssReader.o: RSS/rss_reader.cpp RSS/rss_reader.h
+	g++ -g -c RSS/rss_reader.cpp -o bin/RssReader.o -I include -I RSS
+
+bin/tinyxml2.o: RSS/tinyxml2.cpp RSS/tinyxml2.h
+	g++ -g -c RSS/tinyxml2.cpp -o bin/tinyxml2.o -I RSS
+
 # SearchEngine 可执行文件（排除含有 main 的 DataClean.o、CreateDict.o）
-bin/SearchEngine: bin/InetAddress.o bin/ProtocolParser.o bin/Configuration.o bin/SearchEngineServer.o bin/Timestamp.o bin/Thread.o bin/TcpServer.o bin/TcpConnection.o bin/Socket.o bin/Poller.o bin/Logger.o bin/EventLoopThreadPool.o bin/EventLoopThread.o bin/EventLoop.o bin/EPollPoller.o bin/DefaultPoller.o bin/CurrentThread.o bin/Channel.o bin/Buffer.o bin/Acceptor.o bin/DictProducer.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Lexicon.o bin/KeyRecommander.o
-	g++ -g -o bin/SearchEngine bin/InetAddress.o bin/ProtocolParser.o bin/Configuration.o bin/SearchEngineServer.o bin/Timestamp.o bin/Thread.o bin/TcpServer.o bin/TcpConnection.o bin/Socket.o bin/Poller.o bin/Logger.o bin/EventLoopThreadPool.o bin/EventLoopThread.o bin/EventLoop.o bin/EPollPoller.o bin/DefaultPoller.o bin/CurrentThread.o bin/Channel.o bin/Buffer.o bin/Acceptor.o bin/DictProducer.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Lexicon.o bin/KeyRecommander.o -pthread
+bin/SearchEngine: bin/InetAddress.o bin/ProtocolParser.o bin/Configuration.o bin/SearchEngineServer.o bin/Timestamp.o bin/Thread.o bin/TcpServer.o bin/TcpConnection.o bin/Socket.o bin/Poller.o bin/Logger.o bin/EventLoopThreadPool.o bin/EventLoopThread.o bin/EventLoop.o bin/EPollPoller.o bin/DefaultPoller.o bin/CurrentThread.o bin/Channel.o bin/Buffer.o bin/Acceptor.o bin/DictProducer.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Lexicon.o bin/KeyRecommander.o bin/PageLibPreprocessor.o bin/WebPageSearcher.o
+	g++ -g -o bin/SearchEngine bin/InetAddress.o bin/ProtocolParser.o bin/Configuration.o bin/SearchEngineServer.o bin/Timestamp.o bin/Thread.o bin/TcpServer.o bin/TcpConnection.o bin/Socket.o bin/Poller.o bin/Logger.o bin/EventLoopThreadPool.o bin/EventLoopThread.o bin/EventLoop.o bin/EPollPoller.o bin/DefaultPoller.o bin/CurrentThread.o bin/Channel.o bin/Buffer.o bin/Acceptor.o bin/DictProducer.o bin/SplitToolCppJieba.o bin/SplitTool.o bin/Lexicon.o bin/KeyRecommander.o bin/PageLibPreprocessor.o bin/WebPageSearcher.o -pthread
 
 clean:
 	rm -f bin/DataClean bin/CreateDict bin/SearchEngine

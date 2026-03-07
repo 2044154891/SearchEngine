@@ -43,24 +43,28 @@ Search_Engine/
 - 去除停用词
 - 生成词典和词典索引
 
-### 3. 索引构建与预处理 (PageLibPreprocessor)
-- 加载网页库
-- TF-IDF权重计算
-- 构建倒排索引
-- 索引归一化处理
+### 3. 索引构建 (BuildIndex)
+- **RSS解析**: 解析XML网页源，生成原始网页库
+- **SimHash去重**: 基于海明距离（阈值=3）去除重复网页
+- **倒排索引**: TF-IDF权重计算，构建倒排索引
+- 完整流程：RSS → 去重 → 索引
 
 ### 4. 搜索引擎服务器 (SearchEngineServer)
 - 基于Muduo网络库实现的TCP服务器
 - 支持多线程
 - 帧协议通信
 
-### 5. 关键词推荐 (KeyRecommander)
+### 5. 网页搜索 (WebPageSearcher)
+- 加载倒排索引和网页偏移索引
+- 接收查询请求，返回Top-K搜索结果
+
+### 6. 关键词推荐 (KeyRecommander)
 - 基于编辑距离的智能推荐
 - 结合词频和相关性排序
 
-### 6. SimHash去重 (simhash/)
+### 7. SimHash去重 (simhash/)
 - 基于海明距离的文档去重
-- 独立模块，可单独编译运行
+- 已集成到BuildIndex流程中
 
 ## 编译指南
 
@@ -79,6 +83,9 @@ make bin/DataClean
 
 # 编译词典构建模块
 make bin/CreateDict
+
+# 编译索引构建模块（包含去重）
+make bin/BuildIndex
 
 # 编译搜索引擎服务器
 make bin/SearchEngine
@@ -110,9 +117,17 @@ make rebuild
 ./bin/CreateDict
 ```
 
-### 第三步：构建索引和预处理
+### 第三步：构建索引（包含去重）
 
-（需要在代码中调用 PageLibPreprocessor）
+```bash
+./bin/BuildIndex
+```
+
+此步骤完成：
+- RSS解析XML网页源
+- SimHash去重（基于海明距离阈值=3）
+- TF-IDF权重计算
+- 构建倒排索引
 
 ### 第四步：启动服务器
 

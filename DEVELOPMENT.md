@@ -29,9 +29,12 @@
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
+| RSS解析器 | ✅ 完成 | 解析RSS订阅源，生成网页库 |
+| SimHash去重 | ✅ 完成 | 基于海明距离（阈值=3）去除重复网页 |
 | 倒排索引 | ✅ 完成 | 基于TF-IDF权重计算 |
 | 索引归一化 | ✅ 完成 | L2归一化处理 |
 | 词频统计 | ✅ 完成 | 统计词在文档中的出现次数 |
+| BuildIndex | ✅ 完成 | 整合RSS解析、去重、索引构建的完整流程 |
 
 ### ✅ 4. 服务器模块
 
@@ -39,6 +42,7 @@
 |------|------|------|
 | Tcp服务器 | ✅ 完成 | 基于Muduo实现，支持多线程 |
 | 协议解析器 | ✅ 完成 | 帧协议通信，支持任务分发 |
+| 网页搜索 | ✅ 完成 | WebPageSearcher实现查询和排名 |
 | 关键词推荐 | ✅ 完成 | 基于编辑距离的智能推荐 |
 
 ### ✅ 5. 客户端
@@ -56,88 +60,100 @@
 
 ---
 
-## 二、未完成/待完善功能
+## 二、已完成/待完善功能
 
-### 🔲 1. 网页搜索功能 (WebPageSearcher)
+### ✅ 1. 网页搜索功能 (WebPageSearcher)
 
-**状态**: ❌ 未实现
+**状态**: ✅ 已完成
 
-**问题描述**:
-- `include/WebPageSearcher.h` 仅有一个头文件声明
-- `src/WebPageSearcher.cc` 源文件内容为空
-- `WebPage.h` 头文件存在但未实现完整功能
+**功能说明**:
+- `WebPageSearcher` 类实现了完整的搜索逻辑
+- 加载倒排索引和网页偏移索引
+- 支持查询分词、相关性计算、Top-K排序
+- 返回搜索结果标题、链接、摘要
 
-**需要完成**:
-- [ ] 实现 `WebPageSearcher` 类的搜索逻辑
-- [ ] 实现 `WebPage` 类的网页存储和检索
-- [ ] 集成倒排索引进行相关性排序
-- [ ] 返回搜索结果摘要
+### ✅ 2. 协议解析器
 
-### 🔲 2. 协议解析器完善
+**状态**: ✅ 已完成
 
-**状态**: ⚠️ 部分完成
+**功能说明**:
+- 帧协议通信支持任务分发
+- `handleSearchWebpages` 方法已实现
+- 搜索响应JSON格式已定义
 
-**问题描述**:
-- 协议解析器已定义任务ID常量
-- `handleSearchWebpages` 方法需要实现
-- 需要完善网页搜索的响应处理
+### ✅ 3. 索引构建 (BuildIndex)
 
-**需要完成**:
-- [ ] 实现 `handleSearchWebpages` 方法
-- [ ] 定义并实现搜索响应的JSON格式
+**状态**: ✅ 已完成
 
-### 🔲 3. 索引构建集成
-
-**状态**: ⚠️ 部分完成
-
-**问题描述**:
-- `PageLibPreprocessor` 类已实现
-- 但未在主程序中调用完整的预处理流程
-- 需要整合到服务器启动流程中
-
-**需要完成**:
-- [ ] 在服务器启动时加载/构建索引
-- [ ] 实现索引持久化和加载逻辑
+**功能说明**:
+- `PageLibPreprocessor` 类实现完整索引构建流程
+- `BuildIndex` 程序整合RSS解析、SimHash去重、索引构建
+- 完整流程：RSS → SimHash去重 → 倒排索引
 
 ### 🔲 4. CreateInvertIndex 模块
 
-**状态**: ❌ 空实现
+**状态**: ⚠️ 待废弃
 
 **问题描述**:
 - `src/CreateInvertIndex.cc` 只有一个空的main函数
 
-**需要完成**:
-- [ ] 实现倒排索引的构建逻辑
-- [ ] 或确认该模块是否被 PageLibPreprocessor 替代
+**处理方式**:
+- 该模块功能已被 `PageLibPreprocessor` 替代
+- 建议从项目中移除或保持为空实现
 
 ---
 
-## 三、后续开发方向建议
+## 三、架构说明
 
-### 优先级 1: 完成核心搜索功能
-
-```
-WebPageSearcher 实现步骤:
-1. 加载倒排索引文件
-2. 解析用户查询，分词
-3. 查询倒排索引获取相关文档
-4. 计算文档相关性得分
-5. 排序并返回Top-K结果
-6. 生成搜索结果摘要
-```
-
-### 优先级 2: 完善协议和客户端
+### 离线阶段（索引构建）
 
 ```
-1. 定义标准化的搜索响应JSON格式
-2. 增强客户端功能:
-   - 支持彩色输出
-   - 支持历史记录
-   - 支持搜索结果分页
-3. 添加日志记录功能
+RSS解析 → old_webpage_path (ripepage.dat)
+    ↓
+SimHash去重 → new_webpage_path (newripepage.dat)
+    ↓
+PageLibPreprocessor → 倒排索引 (invertindex.dat)
 ```
 
-### 优先级 3: 性能优化
+运行命令：`./bin/BuildIndex`
+
+### 在线阶段（搜索引擎服务器）
+
+```
+WebPageSearcher.loadIndex() → 加载倒排索引和偏移索引
+    ↓
+ProtocolParser → 接收查询请求
+    ↓
+WebPageSearcher.search() → 返回搜索结果
+```
+
+运行命令：`./bin/SearchEngine`
+
+### 配置文件说明
+
+关键配置项（conf/myconf.conf）：
+
+```ini
+# 网页语料路径
+webpage_path = /home/zhang/Search_Engine/yuliao/人民网语料
+
+# 原始网页库（RSS解析输出）
+old_webpage_path = /home/zhang/Search_Engine/data/ripepage.dat
+old_webpage_offset_path = /home/zhang/Search_Engine/data/oldoffset.dat
+
+# 去重后网页库
+new_webpage_path = /home/zhang/Search_Engine/data/newripepage.dat
+new_webpage_offset_path = /home/zhang/Search_Engine/data/newoffset.dat
+
+# 倒排索引
+invertindex_path = /home/zhang/Search_Engine/data/invertindex.dat
+```
+
+---
+
+## 四、后续开发方向建议
+
+### 优先级 1: 性能优化
 
 ```
 1. 索引缓存机制
@@ -146,7 +162,7 @@ WebPageSearcher 实现步骤:
 4. 内存优化
 ```
 
-### 优先级 4: 功能扩展
+### 优先级 2: 功能扩展
 
 ```
 1. 搜索结果高亮
@@ -156,9 +172,18 @@ WebPageSearcher 实现步骤:
 5. 个性化搜索
 ```
 
+### 优先级 3: 客户端增强
+
+```
+1. 支持彩色输出
+2. 支持历史记录
+3. 支持搜索结果分页
+4. 添加日志记录功能
+```
+
 ---
 
-## 四、技术债务
+## 五、技术债务
 
 1. **代码注释**: 部分模块缺少详细的注释文档
 2. **错误处理**: 需要增强异常处理和错误恢复机制
@@ -168,7 +193,7 @@ WebPageSearcher 实现步骤:
 
 ---
 
-## 五、开发环境
+## 六、开发环境
 
 - **操作系统**: Linux 6.8
 - **编译器**: g++ (C++11+)
@@ -178,20 +203,12 @@ WebPageSearcher 实现步骤:
 
 ---
 
-## 六、当前工作流程
-
-```
-启动服务器 → 加载配置 → 初始化分词器 → 加载词典 → 
-加载索引 → 等待客户端连接 → 处理请求 → 返回响应
-```
-
----
-
 ## 七、总结
 
-项目基础框架已经搭建完成，核心的语料处理、词典构建、网络服务器、关键词推荐等功能已经实现。主要的待完善工作是：
-1. **网页搜索功能** (最重要)
-2. 协议响应的完善
-3. 索引加载和持久化
+项目基础框架已经搭建完成，所有核心功能模块均已实现：
+- ✅ 语料处理与词典构建
+- ✅ 索引构建与去重
+- ✅ 网络服务器与协议解析
+- ✅ 网页搜索与关键词推荐
 
-建议按优先级顺序进行开发，先完成核心搜索功能，再逐步完善其他功能。
+后续可按优先级进行功能扩展和性能优化。

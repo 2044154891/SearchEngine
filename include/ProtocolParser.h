@@ -4,9 +4,11 @@
 #include "Buffer.h"
 #include "TcpConnection.h"
 #include "KeyRecommander.h"
+#include "WebPageSearcher.h"
 #include <functional>
 #include <string>
 #include <map>
+#include <memory>
 
 // 前向声明
 class TcpConnection;
@@ -51,6 +53,9 @@ private:
     static constexpr int TASK_SEARCH_WEBPAGES   = 2;     // 搜索网页任务
     static constexpr int RESPONSE_RECOMMEND_KEYWORDS = 100;  // 推荐关键词响应
     static constexpr int RESPONSE_SEARCH_WEBPAGES     = 200; // 搜索网页响应
+
+    // 网页搜索引擎
+    std::unique_ptr<WebPageSearcher> _webPageSearcher;
 
     static constexpr size_t kMessageLen = 4;
     static constexpr size_t kMessageId  = 4;

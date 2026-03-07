@@ -2,13 +2,17 @@
 #include "Buffer.h"
 #include "Logger.h"
 #include "KeyRecommander.h"
+#include "WebPageSearcher.h"
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <iostream>
 #include <cstring>
 #include <arpa/inet.h>
 
-ProtocolParser::ProtocolParser() {
+ProtocolParser::ProtocolParser() : _webPageSearcher(new WebPageSearcher()) {
+    // 加载索引（只在服务器启动时加载一次）
+    _webPageSearcher->loadIndex();
+    
     // 注册默认的任务处理器
     registerTaskHandler(TASK_RECOMMEND_KEYWORDS, 
         [this](const TcpConnectionPtr& conn, const std::string& content) {
@@ -124,12 +128,25 @@ void ProtocolParser::handleRecommendKeywords(const TcpConnectionPtr& conn, const
 void ProtocolParser::handleSearchWebpages(const TcpConnectionPtr& conn, const std::string& content) {
     std::cout << "Handling search webpages request: " << content << std::endl;
     
-    // 这里实现网页搜索的逻辑
-    // 例如：搜索包含关键词的网页信息
+    // 使用 WebPageSearcher 进行真正的搜索
+    auto results = _webPageSearcher->search(content, 10);
     
-    // 构造响应消息：200:搜索到的网页信息
-    std::string response = std::to_string(RESPONSE_SEARCH_WEBPAGES) + ":" + 
-                          "搜索结果: " + content + " - 网页1,网页2,网页3";
+    // 构造JSON响应
+    nlohmann::json j;
+    j["id"] = RESPONSE_SEARCH_WEBPAGES;
+    j["query"] = content;
+    j["total"] = results.size();
+    j["results"] = nlohmann::json::array();
     
-    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, response);
+    for (const auto& result : results) {
+        nlohmann::json item;
+        item["docId"] = result.docId;
+        item["score"] = result.score;
+        item["title"] = result.title;
+        item["url"] = result.url;
+        item["summary"] = result.summary;
+        j["results"].push_back(item);
+    }
+    
+    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, j.dump());
 }
