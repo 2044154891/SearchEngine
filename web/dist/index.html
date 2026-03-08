@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>搜索引擎</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding-top: 100px;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      padding: 20px;
+    }
+    .search-box {
+      background: white;
+      border-radius: 50px;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 18px;
+      padding: 10px;
+    }
+    .search-box button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .search-box button:hover {
+      background: #5568d3;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin: 30px 0;
+      gap: 20px;
+    }
+    .tab {
+      padding: 10px 30px;
+      background: rgba(255,255,255,0.3);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .tab.active {
+      background: white;
+      color: #667eea;
+    }
+    .results {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    .result-item {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    .result-item:last-child {
+      border-bottom: none;
+    }
+    .result-title {
+      color: #1a0dab;
+      font-size: 18px;
+      margin-bottom: 5px;
+      cursor: pointer;
+    }
+    .result-title:hover {
+      text-decoration: underline;
+    }
+    .result-url {
+      color: #006621;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    .result-summary {
+      color: #545454;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .suggestions {
+      background: white;
+      border-radius: 10px;
+      margin-top: 10px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .suggestion-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      transition: background 0.2s;
+    }
+    .suggestion-item:hover {
+      background: #f5f5f5;
+    }
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #e74c3c;
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/index-e6f11315.js"></script>
+</head>
+<body>
+  <div id="app" class="container">
+    <div class="search-box">
+      <input 
+        type="text" 
+        v-model="query" 
+        @keyup.enter="search"
+        @input="onInput"
+        placeholder="请输入搜索内容..."
+      >
+      <button @click="search">搜索</button>
+    </div>
+    
+    <div class="tabs">
+      <button 
+        class="tab" 
+        :class="{ active: searchType === 'web' }"
+        @click="searchType = 'web'; search()"
+      >
+        网页搜索
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: searchType === 'keyword' }"
+        @click="searchType = 'keyword'; search()"
+      >
+        关键词推荐
+      </button>
+    </div>
+
+    <!-- 加载中 -->
+    <div v-if="loading" class="results">
+      <div class="loading">加载中...</div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div v-else-if="error" class="results">
+      <div class="error">{{ error }}</div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div v-else-if="searchType === 'web' && results.length > 0" class="results">
+      <div class="result-item" v-for="result in results" :key="result.docId">
+        <div class="result-title">{{ result.title }}</div>
+        <div class="result-url">{{ result.url }}</div>
+        <div class="result-summary">{{ result.summary }}</div>
+      </div>
+    </div>
+
+    <!-- 关键词推荐结果 -->
+    <div v-else-if="searchType === 'keyword' && suggestions.length > 0" class="suggestions">
+      <div 
+        class="suggestion-item" 
+        v-for="(suggestion, index) in suggestions" 
+        :key="index"
+        @click="clickSuggestion(suggestion)"
+      >
+        {{ suggestion }}
+      </div>
+    </div>
+  </div>
+
+  
+</body>
+</html>
