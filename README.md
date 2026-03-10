@@ -9,6 +9,7 @@
 ```
 Search_Engine/
 ├── bin/                    # 编译生成的可执行文件目录
+├── build/                  # CMake构建目录（生成的可执行文件在此）
 ├── client/                 # 客户端代码
 │   └── client.cc          # 测试客户端
 ├── conf/                   # 配置文件
@@ -16,18 +17,21 @@ Search_Engine/
 ├── data/                   # 数据文件目录（索引、网页库等）
 ├── include/                # 头文件目录
 │   ├── cppjieba/          # 中文分词库
-│   └── nlohmann/          # JSON库
+│   ├── nlohmann/          # JSON库
+│   └── redis++/           # Redis C++客户端
 ├── log/                    # 日志目录
 ├── RSS/                    # RSS订阅源解析模块
 ├── simhash/                # SimHash去重模块
 ├── src/                    # 源代码目录
 ├── test/                   # 测试文件目录
+├── web/                    # 前端Web界面
 ├── yuliao/                 # 语料库目录
 │   ├── art/                # 中文语料
 │   ├── clean_data/         # 清洗后的语料
 │   ├── english/            # 英文语料
 │   └── 人民网语料/          # 网页语料
-├── Makefile                # 编译配置
+├── CMakeLists.txt          # CMake主配置文件
+├── Makefile                # 传统Makefile编译配置
 └── README.md               # 本文件
 ```
 
@@ -68,14 +72,32 @@ Search_Engine/
 
 ## 编译指南
 
-### 编译整个项目
+### 方法一：使用Makefile（传统方式）
 
 ```bash
 cd /home/zhang/Search_Engine
 make
 ```
 
-### 编译各个模块
+### 方法二：使用CMake（推荐）
+
+```bash
+cd /home/zhang/Search_Engine
+
+# 创建并进入构建目录
+mkdir -p build
+cd build
+
+# 配置项目
+cmake ..
+
+# 编译（-j4 表示使用4个线程并行编译）
+make -j4
+
+# 可执行文件将生成在 build/bin/ 目录下
+```
+
+### 编译各个模块（Makefile方式）
 
 ```bash
 # 编译语料清洗模块
@@ -94,13 +116,21 @@ make bin/SearchEngine
 ### 清理编译文件
 
 ```bash
+# Makefile 清理
 make clean
+
+# CMake 清理
+rm -rf build/*
 ```
 
 ### 重新编译
 
 ```bash
+# Makefile 方式
 make rebuild
+
+# CMake 方式
+rm -rf build && mkdir build && cd build && cmake .. && make -j4
 ```
 
 ## 运行指南
@@ -197,10 +227,14 @@ server_port = 8888
 
 ## 依赖项
 
-- C++11 及以上
-- CMake (可选，用于部分模块)
-- CppJieba (已包含在项目中)
-- Muduo 网络库 (已包含在项目中)
+- **C++17** 及以上（使用CMake方式）
+- **C++11** 及以上（使用Makefile方式）
+- **CMake 3.10+**（用于CMake构建）
+- **CppJieba** (已包含在项目中)
+- **Muduo 网络库** (已包含在项目中)
+- **glog** (Google日志库)
+- **redis++ / hiredis** (Redis客户端)
+- **nlohmann/json** (已包含在项目中)
 
 ## 注意事项
 
