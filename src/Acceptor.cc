@@ -12,7 +12,7 @@ static int createNonblocking()
     int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
     if (sockfd < 0)
     {
-        LOG_FATAL("%s:%s:%d listen sockfd create error:%d\n", __FILE__, __FUNCTION__, __LINE__, errno);
+        FATAL("%s:%s:%d listen sockfd create error:%d\n", __FILE__, __FUNCTION__, __LINE__, errno);
     }
     return sockfd;
 }
@@ -23,7 +23,7 @@ Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reusepor
     , acceptChannel_(loop, acceptSocket_.fd())
     , listening_(false)
 {
-    LOG_INFO("Acceptor::Acceptor, start listening");
+    INFO("Acceptor::Acceptor, start listening");
     acceptSocket_.setReuseAddr(true);
     acceptSocket_.setReusePort(reuseport);
     acceptSocket_.bindAddress(listenAddr);
@@ -55,10 +55,10 @@ void Acceptor::handleRead()// listenfd有事件发生了，就是有新用户连
     }
     else
     {
-        LOG_ERROR("%s:%s:%d accept_ error:%d\n",__FILE__, __FUNCTION__, __LINE__, errno);
+        ERROR("%s:%s:%d accept_ error:%d\n",__FILE__, __FUNCTION__, __LINE__, errno);
         if(errno == EMFILE)
         {
-            LOG_ERROR("%s:%s:%d sockfd reached limit\n", __FILE__, __FUNCTION__, __LINE__);
+            ERROR("%s:%s:%d sockfd reached limit\n", __FILE__, __FUNCTION__, __LINE__);
         }
     }
 }
@@ -69,6 +69,6 @@ void Acceptor::listen()
     listening_ =true;
     acceptSocket_.listen(); //listen
     acceptChannel_.enableReading(); //acceptChannel_注册至Poller !重要
-    LOG_INFO("Acceptor::listen \n");
+    INFO("Acceptor::listen \n");
 }
 

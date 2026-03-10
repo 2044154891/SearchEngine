@@ -23,7 +23,7 @@ Configuration::Configuration(const std::string& filepath) {
     _stopWordList.clear();
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        LOG_FATAL("can't open conf file, pleaser check the path%s /n",filepath.c_str());
+        FATAL("can't open conf file, pleaser check the path%s /n",filepath.c_str());
         return;
     }
     std::string line;

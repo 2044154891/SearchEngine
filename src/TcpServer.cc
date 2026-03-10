@@ -7,7 +7,7 @@ static EventLoop *CheckLoopNotNull(EventLoop *loop)
 {
     if(loop == nullptr)
     {
-        LOG_FATAL("%s:%s:%d mainLoop is null!\n",__FILE__, __FUNCTION__, __LINE__);
+        FATAL("%s:%s:%d mainLoop is null!\n",__FILE__, __FUNCTION__, __LINE__);
     }
     return loop;
 }
@@ -50,11 +50,11 @@ void TcpServer::start()
 {
     if(started_.fetch_add(1) == 0) //防止一个TcpServer对象被start多次
     {
-        LOG_INFO("TcpServer::start() - starting thread pool");
+        INFO("TcpServer::start() - starting thread pool");
         threadPool_->start(threadInitCallback_);  //启动底层的loop线程池
-        LOG_INFO("TcpServer::start() - calling runInLoop for Acceptor::listen");
+        INFO("TcpServer::start() - calling runInLoop for Acceptor::listen");
         loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
-        LOG_INFO("TcpServer::start() - runInLoop called");
+        INFO("TcpServer::start() - runInLoop called");
     }
 }
 
@@ -68,7 +68,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
     ++nextConnId_; //这里没有设置为原子类型是因为只在mainloop中执行 不涉及线程安全问题
     std::string connName = name_ + buf;
 
-    LOG_INFO("TcpServer::newConnection [%s] -new connection [%s] from %s \n",
+    INFO("TcpServer::newConnection [%s] -new connection [%s] from %s \n",
                 name_.c_str(),connName.c_str(), peerAddr.toIpPort().c_str());
     
     //通过sockfd获取其绑定的本地的ip地址和端口信息
@@ -78,7 +78,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
     ::memset(&addrlen, 0, sizeof(addrlen));
     if(::getsockname(sockfd, (sockaddr *)&local, &addrlen) < 0)
     {
-        LOG_ERROR("sockets::getLocalAddr\n");
+        ERROR("sockets::getLocalAddr\n");
     }
     InetAddress localAddr(local);
     TcpConnectionPtr conn(new TcpConnection(
@@ -106,7 +106,7 @@ void TcpServer::removeConnection(const TcpConnectionPtr &conn)
 
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
 {
-    LOG_INFO("TcpServer::removeConnectionInLoop [%s] - connection %s\n",
+    INFO("TcpServer::removeConnectionInLoop [%s] - connection %s\n",
         name_.c_str(), conn->name().c_str());
     connections_.erase(conn->name());
     EventLoop * ioloop = conn->getLoop();

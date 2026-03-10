@@ -64,7 +64,7 @@ void Channel::handleEvent(Timestamp receiveTime)
 }
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
-    LOG_INFO("channel handleEvent revents:%d\n", revents_);
+    INFO("channel handleEvent revents:%d\n", revents_);
     // 关闭
     if ((revents_ & EPOLLHUP) && !(revents_ & EPOLLIN)) // 当TcpConnection对应Channel 通过shutdown 关闭写端 epoll触发EPOLLHUP
     {

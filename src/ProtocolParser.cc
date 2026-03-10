@@ -1,4 +1,5 @@
 #include "ProtocolParser.h"
+#include "Logger.h"
 #include "Buffer.h"
 #include "Logger.h"
 #include "KeyRecommander.h"
@@ -43,7 +44,7 @@ bool ProtocolParser::tryParse(Buffer* buf, uint32_t& msgId, std::string& content
 
     //防御阈值
     if (bodyLen > 100 * 1024 * 1024) {
-        LOG_FATAL("message overflow the maxsize\n");
+        FATAL("message overflow the maxsize\n");
         return false;
     }
 

@@ -40,7 +40,7 @@ int createEventfd()
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (evtfd < 0)
     {
-        LOG_FATAL("eventfd error:%d\n", errno);
+    FATAL("eventfd error:%d\n", errno);
     }
     return evtfd;
 }
@@ -48,10 +48,10 @@ int createEventfd()
 EventLoop::EventLoop()
     : looping_(false), quit_(false), callingPendingFunctors_(false), threadID_(CurrentThread::tid()), poller_(Poller::newDefaultPoller(this)), wakeupFd_(createEventfd()), wakeupChannel_(new Channel(this, wakeupFd_))
 {
-    LOG_DEBUG("EventLoop created %p in thread %d\n", this, threadID_);
+    INFO("EventLoop created %p in thread %d\n", this, threadID_);
     if (t_loopInThisThread)
     {
-        LOG_FATAL("Another EventLoop %p exits in this thread %d\n", t_loopInThisThread, threadID_);
+        FATAL("Another EventLoop %p exits in this thread %d\n", t_loopInThisThread, threadID_);
     }
     else
     {
@@ -74,7 +74,7 @@ void EventLoop::handleRead()
     ssize_t n = read(wakeupFd_, &one, sizeof(one));
     if (n != sizeof(one))
     {
-        LOG_ERROR("EventLoop::handleRead() read %lu bytes instead of 8\n", n);
+        ERROR("EventLoop::handleRead() read %lu bytes instead of 8\n", n);
     }
 }
 
@@ -84,7 +84,7 @@ void EventLoop::loop()
     looping_ = true;
     quit_ = false;
 
-    LOG_INFO("EventLoop %p start looping \n", this);
+    INFO("EventLoop %p start looping \n", this);
 
     while (!quit_)
     {
@@ -106,7 +106,7 @@ void EventLoop::loop()
         doPendingFunctors();
     }
 
-    LOG_INFO("EventLoop %p stop looping.\n", this);
+    INFO("EventLoop %p stop looping.\n", this);
     looping_ = false;
 }
 
@@ -169,7 +169,7 @@ void EventLoop::wakeup()
     ssize_t n = write(wakeupFd_, &one, sizeof(one));
     if (n != sizeof(one))
     {
-        LOG_ERROR("EventLoop::wakeup() write %lu instead of 8\n", n);
+        ERROR("EventLoop::wakeup() write %lu instead of 8\n", n);
     }
 }
 

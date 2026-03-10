@@ -1,4 +1,5 @@
 #include "WebPageSearcher.h"
+#include "Logger.h"
 #include "SplitToolCppJieba.h"
 #include "Config.h"
 #include "FileUtils.h"
@@ -26,7 +27,7 @@ void WebPageSearcher::initPathsFromConfig() {
 }
 
 void WebPageSearcher::loadIndex() {
-    std::cout << "正在加载索引..." << std::endl;
+    INFO("正在加载索引...") << std::endl;
     
     loadInvertIndex();
     loadPageOffset();
@@ -34,18 +35,18 @@ void WebPageSearcher::loadIndex() {
     // 打开网页库文件
     _pageFile.open(_pagePath, std::ios::binary);
     if (!_pageFile.is_open()) {
-        std::cerr << "WebPageSearcher: cannot open page file: " << _pagePath << std::endl;
+        ERROR("WebPageSearcher: cannot open page file: %s", _pagePath.c_str()) << std::endl;
         return;
     }
     
-    std::cout << "索引加载完成！倒排索引词条数: " << _invertIndex.size() 
+    INFO("索引加载完成！倒排索引词条数: %lu, 网页总数: %lu", (unsigned long)_invertIndex.size(), (unsigned long)_pageOffset.size()) 
               << ", 网页总数: " << _pageOffset.size() << std::endl;
 }
 
 void WebPageSearcher::loadInvertIndex() {
     std::ifstream in(_invertIndexPath);
     if (!in.is_open()) {
-        std::cerr << "WebPageSearcher: cannot open invert index: " << _invertIndexPath << std::endl;
+        ERROR("WebPageSearcher: cannot open invert index: %s", _invertIndexPath.c_str()) << std::endl;
         return;
     }
     
@@ -72,13 +73,13 @@ void WebPageSearcher::loadInvertIndex() {
     }
     
     in.close();
-    std::cout << "倒排索引加载完成，词条数: " << _invertIndex.size() << std::endl;
+    INFO("倒排索引加载完成，词条数: %lu", (unsigned long)_invertIndex.size()) << std::endl;
 }
 
 void WebPageSearcher::loadPageOffset() {
     std::ifstream in(_offsetPath);
     if (!in.is_open()) {
-        std::cerr << "WebPageSearcher: cannot open offset file: " << _offsetPath << std::endl;
+        ERROR("WebPageSearcher: cannot open offset file: %s", _offsetPath.c_str()) << std::endl;
         return;
     }
     
@@ -90,7 +91,7 @@ void WebPageSearcher::loadPageOffset() {
     }
     
     in.close();
-    std::cout << "网页偏移索引加载完成，文档数: " << _pageOffset.size() << std::endl;
+    INFO("网页偏移索引加载完成，文档数: %lu", (unsigned long)_pageOffset.size()) << std::endl;
 }
 
 std::string WebPageSearcher::getPageContent(int docId) {

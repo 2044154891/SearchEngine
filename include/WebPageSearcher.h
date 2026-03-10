@@ -28,6 +28,9 @@ public:
     // 搜索接口：返回Top-K结果
     std::vector<SearchResult> search(const std::string& query, int topK = 10);
 
+    // 初始化Redis缓存
+    void initRedisCache(const std::string& host = "127.0.0.1", int port = 6379);
+
 private:
     // 加载倒排索引
     void loadInvertIndex();
@@ -35,8 +38,11 @@ private:
     // 加载网页偏移索引
     void loadPageOffset();
 
-    // 根据docId获取网页内容
+    // 根据docId获取网页内容（优先从Redis缓存获取，其次从本地缓存，最后从磁盘读取）
     std::string getPageContent(int docId);
+
+    // 从磁盘读取网页内容
+    std::string readPageFromDisk(int docId);
 
     // 提取网页标题
     std::string extractTitle(const std::string& content);
@@ -73,7 +79,10 @@ private:
     // 网页库文件句柄（用于随机读取）
     std::ifstream _pageFile;
 
-    // 缓存已读取的网页内容
+    // 缓存已读取的网页内容（本地内存缓存，默认1000条）
     std::unordered_map<int, std::string> _pageCache;
+    
+    // 是否启用Redis缓存
+    bool _useRedisCache;
 };
 

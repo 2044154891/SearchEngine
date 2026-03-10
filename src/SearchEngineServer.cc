@@ -1,4 +1,5 @@
 #include "SearchEngineServer.h"
+#include "Logger.h"
 
 SearchEngineServer::SearchEngineServer(EventLoop* loop, const InetAddress& listenAddr)
     : _loop(loop)
@@ -21,15 +22,15 @@ void SearchEngineServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Ti
 
 void SearchEngineServer::onWriteComplete(const TcpConnectionPtr &conn) {
    
-    std::cout << "Message sent to connection: " << conn->name() << std::endl;
+    INFO("Message sent to connection: %s", conn->name().c_str());
 }
 
 void SearchEngineServer::onConnection(const TcpConnectionPtr &conn) {
-    std::cout << "New connection: " << conn->name() << "\n";
+    INFO("New connection: %s", conn->name().c_str());
 }
 
 void SearchEngineServer::onClose() {
-    std::cout << "Server closed" << std::endl;
+    INFO("Server closed");
 }
 
 void SearchEngineServer::doTaskThread(const TcpConnectionPtr &conn, const std::string& msg) {
@@ -37,9 +38,9 @@ void SearchEngineServer::doTaskThread(const TcpConnectionPtr &conn, const std::s
 }
 
 void SearchEngineServer::start() {
-    std::cout << "SearchEngineServer::start() called" << std::endl;
+    INFO("SearchEngineServer::start() called");
     _tcpServer.start();
-    std::cout << "SearchEngineServer::start() completed" << std::endl;
+    INFO("SearchEngineServer::start() completed");
 }
 
 int main() {
