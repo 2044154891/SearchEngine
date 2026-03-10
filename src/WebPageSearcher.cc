@@ -95,12 +95,7 @@ void WebPageSearcher::loadPageOffset() {
 }
 
 std::string WebPageSearcher::getPageContent(int docId) {
-    // 先检查缓存
-    auto itCache = _pageCache.find(docId);
-    if (itCache != _pageCache.end()) {
-        return itCache->second;
-    }
-    
+    // 直接从磁盘读取，不使用本地缓存（避免锁竞争）
     auto it = _pageOffset.find(docId);
     if (it == _pageOffset.end()) {
         return "";
@@ -122,11 +117,6 @@ std::string WebPageSearcher::getPageContent(int docId) {
     
     if (static_cast<long long>(_pageFile.gcount()) != length) {
         return "";
-    }
-    
-    // 缓存结果（限制缓存大小）
-    if (_pageCache.size() < 1000) {
-        _pageCache[docId] = content;
     }
     
     return content;

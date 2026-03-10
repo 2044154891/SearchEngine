@@ -3,7 +3,8 @@
 
 SearchEngineServer::SearchEngineServer(EventLoop* loop, const InetAddress& listenAddr)
     : _loop(loop)
-    , _tcpServer(loop, listenAddr, "SearchEngine") //不能写成_tcpServer(_loop, listenAddr, "SearchEngine") ,初始化的顺序由变量声明顺序决定
+    , _tcpServer(loop, listenAddr, "SearchEngine")
+    , _protocolParser(new ProtocolParser(loop))  // 传递EventLoop给ProtocolParser
 {   
     _tcpServer.setThreadNum(4);
     _tcpServer.setConnectionCallback(std::bind(&SearchEngineServer::onConnection, this, std::placeholders::_1));
@@ -17,7 +18,7 @@ SearchEngineServer::~SearchEngineServer() {
 
 void SearchEngineServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp receiveTime) {
     // 使用协议解析器处理消息
-    _protocolParser.parseAndDispatch(conn, buf);
+    _protocolParser->parseAndDispatch(conn, buf);
 }
 
 void SearchEngineServer::onWriteComplete(const TcpConnectionPtr &conn) {

@@ -73,6 +73,7 @@ void TcpConnection::sendInLoop( const void* data, size_t len)
     if(state_ == kDisconnected) //之前调用过tcpconnecion 的shutdown不能再进行send
     {
         ERROR("disconnectied, give up writing");
+        return;
     }
     //表示channel_第一次start写数据或者缓冲区没有发送数据
     if(!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
@@ -90,14 +91,16 @@ void TcpConnection::sendInLoop( const void* data, size_t len)
         else//nwrote < 0
         {
             nwrote = 0;
-            if (errno != EWOULDBLOCK) //EWOULDBLOCK 表示没有阻塞下没有数据后的正常return 等同于EAGAIN
+            if (errno != EWOULDBLOCK && errno != EAGAIN) //EWOULDBLOCK/EAGAIN 表示没有阻塞下没有数据后的正常return
             {
-                ERROR("Tcpconnection::sendInloop");
+                ERROR("Tcpconnection::sendInloop, errno=%d", errno);
                 if(errno == EPIPE || errno == ECONNRESET) //SIGPIPI RSET
                 {
                     faultError = true;
                 }
             }
+            // 当 write 返回 EAGAIN/EWOULDBLOCK 时，说明内核发送缓冲区已满，
+            // 继续执行，将数据放入用户缓冲区并等待 EPOLLOUT 事件
         }
     }
     /*

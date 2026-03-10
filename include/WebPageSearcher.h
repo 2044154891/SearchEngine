@@ -78,11 +78,5 @@ private:
 
     // 网页库文件句柄（用于随机读取）
     std::ifstream _pageFile;
-
-    // 缓存已读取的网页内容（本地内存缓存，默认1000条）
-    std::unordered_map<int, std::string> _pageCache;
-    
-    // 是否启用Redis缓存
-    bool _useRedisCache;
 };
 

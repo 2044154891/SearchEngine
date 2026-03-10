@@ -23,7 +23,5 @@ public:
 private:
     EventLoop *_loop;
     TcpServer _tcpServer;
-    ProtocolParser _protocolParser;  // 协议解析器
-    //KeyRecommander _keyRecommander;
-    //WebPageSearcher _webPageSearcher;
+    std::unique_ptr<ProtocolParser> _protocolParser;  // 协议解析器（使用智能指针管理）
 };

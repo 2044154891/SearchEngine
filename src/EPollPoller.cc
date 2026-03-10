@@ -44,7 +44,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
         }
     }
     else if(numEvents == 0){
-        INFO("%s timeout!\n",__FUNCTION__);
+        // INFO("%s timeout!\n",__FUNCTION__);
     }
     else{
         if(saveError != EINTR){
