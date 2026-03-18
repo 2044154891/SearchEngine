@@ -203,22 +203,42 @@ std::vector<SearchResult> WebPageSearcher::search(const std::string& query, int 
         }
     }
     
-    // 3. 按得分排序
+    // 3. 使用部分排序（堆排序）获取Top-K，比完全排序更高效
+    // 如果文档数小于topK，直接排序；否则使用nth_element
     std::vector<std::pair<int, double>> sortedDocs;
+    sortedDocs.reserve(docScores.size());
     for (const auto& kv : docScores) {
         sortedDocs.emplace_back(kv.first, kv.second);
     }
     
+    size_t numResults = sortedDocs.size();
+    if (numResults == 0) {
+        return results;
+    }
+    
+    // 预先分配结果容器容量
+    results.reserve(std::min(static_cast<size_t>(topK), numResults));
+    
+    // 使用nth_element进行部分排序，时间复杂度O(n) vs 完全排序O(nlogn)
+    if (numResults > static_cast<size_t>(topK)) {
+        std::nth_element(sortedDocs.begin(), 
+                        sortedDocs.begin() + topK, 
+                        sortedDocs.end(),
+                        [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+                            return a.second > b.second;
+                        });
+        // 提取Top-K
+        sortedDocs.resize(topK);
+    }
+    
+    // 对Top-K进行排序（保证结果顺序稳定）
     std::sort(sortedDocs.begin(), sortedDocs.end(),
               [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
                   return a.second > b.second;
               });
     
-    // 4. 取Top-K结果
-    int count = 0;
+    // 4. 获取Top-K结果的网页内容
     for (const auto& doc : sortedDocs) {
-        if (count >= topK) break;
-        
         SearchResult result;
         result.docId = doc.first;
         result.score = doc.second;
@@ -239,7 +259,6 @@ std::vector<SearchResult> WebPageSearcher::search(const std::string& query, int 
         }
         
         results.push_back(result);
-        ++count;
     }
     
     return results;

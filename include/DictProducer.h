@@ -33,7 +33,7 @@ private:
     std::vector<std::string> _files_english;
     std::vector<std::string> _files_chinese; //存储文件路径
     std::vector<std::pair<std::string,int>> _dict; //存储单词和词频 先临时创建一个map 再对值进行修改 将其转换为pair<string,int>
-    std::map<std::string,std::set<int>> _index; //存储单词和文件索引 是一个map，key是单词，value是set，set中存储的是文件索引
+    std::map<std::string,std::set<int>> _index; //存储单词和词典索引 是一个map，key是子词，value是set，set中存储的是词典索引
     SplitTool* _cuttor; //分词器
 };
 
