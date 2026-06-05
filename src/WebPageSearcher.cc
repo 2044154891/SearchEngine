@@ -4,18 +4,25 @@
 #include "Config.h"
 #include "FileUtils.h"
 
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 WebPageSearcher::WebPageSearcher() {
     initPathsFromConfig();
 }
 
 WebPageSearcher::~WebPageSearcher() {
-    if (_pageFile.is_open()) {
-        _pageFile.close();
+    if (_pageFd >= 0) {
+        ::close(_pageFd);
+        _pageFd = -1;
     }
 }
 
@@ -32,13 +39,21 @@ void WebPageSearcher::loadIndex() {
     loadInvertIndex();
     loadPageOffset();
     
-    // 打开网页库文件
-    _pageFile.open(_pagePath, std::ios::binary);
-    if (!_pageFile.is_open()) {
-        ERROR("WebPageSearcher: cannot open page file: %s", _pagePath.c_str()) << std::endl;
+    if (_pageFd >= 0) {
+        ::close(_pageFd);
+        _pageFd = -1;
+    }
+
+#ifdef O_CLOEXEC
+    _pageFd = ::open(_pagePath.c_str(), O_RDONLY | O_CLOEXEC);
+#else
+    _pageFd = ::open(_pagePath.c_str(), O_RDONLY);
+#endif
+    if (_pageFd < 0) {
+        ERROR("WebPageSearcher: cannot open page file: %s, error: %s", _pagePath.c_str(), std::strerror(errno)) << std::endl;
         return;
     }
-    
+
     INFO("索引加载完成！倒排索引词条数: %lu, 网页总数: %lu", (unsigned long)_invertIndex.size(), (unsigned long)_pageOffset.size()) 
               << ", 网页总数: " << _pageOffset.size() << std::endl;
 }
@@ -104,21 +119,42 @@ std::string WebPageSearcher::getPageContent(int docId) {
     long long offset = it->second.first;
     long long length = it->second.second;
     
-    if (length <= 0 || length > 10 * 1024 * 1024) {  // 最大10MB
+    if (_pageFd < 0) {
+        ERROR("WebPageSearcher: page file is not open: %s", _pagePath.c_str()) << std::endl;
         return "";
     }
-    
+
+    if (offset < 0 || length <= 0 || length > 10 * 1024 * 1024) {  // 最大10MB
+        return "";
+    }
+
     std::string content;
     content.resize(static_cast<size_t>(length));
-    
-    _pageFile.clear();
-    _pageFile.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
-    _pageFile.read(&content[0], static_cast<std::streamsize>(length));
-    
-    if (static_cast<long long>(_pageFile.gcount()) != length) {
+
+    size_t totalRead = 0;
+    while (totalRead < content.size()) {
+        ssize_t nread = ::pread(_pageFd,
+                                &content[totalRead],
+                                content.size() - totalRead,
+                                static_cast<off_t>(offset + static_cast<long long>(totalRead)));
+        if (nread > 0) {
+            totalRead += static_cast<size_t>(nread);
+            continue;
+        }
+
+        if (nread == 0) {
+            ERROR("WebPageSearcher: unexpected EOF reading docId=%d", docId) << std::endl;
+            return "";
+        }
+
+        if (errno == EINTR) {
+            continue;
+        }
+
+        ERROR("WebPageSearcher: pread failed for docId=%d, error: %s", docId, std::strerror(errno)) << std::endl;
         return "";
     }
-    
+
     return content;
 }
 

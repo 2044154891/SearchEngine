@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <set>
 #include <memory>
-#include <fstream>
 
 // 搜索结果结构体
 struct SearchResult {
@@ -38,11 +37,8 @@ private:
     // 加载网页偏移索引
     void loadPageOffset();
 
-    // 根据docId获取网页内容（优先从Redis缓存获取，其次从本地缓存，最后从磁盘读取）
+    // 根据docId获取网页内容
     std::string getPageContent(int docId);
-
-    // 从磁盘读取网页内容
-    std::string readPageFromDisk(int docId);
 
     // 提取网页标题
     std::string extractTitle(const std::string& content);
@@ -76,7 +72,7 @@ private:
     std::string _offsetPath;
     std::string _invertIndexPath;
 
-    // 网页库文件句柄（用于随机读取）
-    std::ifstream _pageFile;
+    // 网页库只读文件描述符；pread 并发读取不会改变共享文件偏移
+    int _pageFd = -1;
 };
 

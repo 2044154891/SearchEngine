@@ -9,7 +9,54 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <exception>
 #include <arpa/inet.h>
+
+namespace {
+
+std::string dumpJsonForClient(const nlohmann::json& j) {
+    return j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+}
+
+std::string makeErrorResponse(uint32_t responseId, const std::string& query, const std::string& message) {
+    nlohmann::json j;
+    j["id"] = responseId;
+    j["query"] = query;
+    j["total"] = 0;
+    j["results"] = nlohmann::json::array();
+    j["error"] = message;
+    return dumpJsonForClient(j);
+}
+
+void sendPreparedFrame(EventLoop* ioLoop,
+                       const std::weak_ptr<TcpConnection>& weakConn,
+                       uint32_t responseId,
+                       const std::string& responseStr,
+                       const char* logMessage) {
+    auto connPtr = weakConn.lock();
+    if (!connPtr) {
+        std::cout << "[ThreadPool] Connection already closed, skipping response" << std::endl;
+        return;
+    }
+
+    ioLoop->runInLoop([connPtr, responseId, responseStr, logMessage]() {
+        uint32_t lenNet = htonl(static_cast<uint32_t>(responseStr.size()));
+        uint32_t idNet  = htonl(responseId);
+
+        std::string out;
+        out.resize(8 + responseStr.size());
+        std::memcpy(&out[0], &lenNet, 4);
+        std::memcpy(&out[4], &idNet, 4);
+        if (!responseStr.empty()) {
+            std::memcpy(&out[8], responseStr.data(), responseStr.size());
+        }
+
+        connPtr->send(out);
+        std::cout << logMessage << responseStr.size() << std::endl;
+    });
+}
+
+} // namespace
 
 ProtocolParser::ProtocolParser(EventLoop* ioLoop)
     : _ioLoop(ioLoop)
@@ -132,7 +179,7 @@ void ProtocolParser::handleRecommendKeywords(const TcpConnectionPtr& conn, const
     j["query"] = content;
     j["suggestions"] = full;
 
-    sendFrame(conn, RESPONSE_RECOMMEND_KEYWORDS, j.dump());
+    sendFrame(conn, RESPONSE_RECOMMEND_KEYWORDS, dumpJsonForClient(j));
 }
 
 // 任务2：处理网页搜索请求
@@ -159,7 +206,7 @@ void ProtocolParser::handleSearchWebpages(const TcpConnectionPtr& conn, const st
         j["results"].push_back(item);
     }
     
-    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, j.dump());
+    sendFrame(conn, RESPONSE_SEARCH_WEBPAGES, dumpJsonForClient(j));
 }
 
 // 异步任务1：处理推荐关键词请求（在新线程中执行计算）
@@ -183,30 +230,11 @@ void ProtocolParser::handleRecommendKeywordsAsync(const TcpConnectionPtr& conn, 
         j["id"] = RESPONSE_RECOMMEND_KEYWORDS;
         j["query"] = content;
         j["suggestions"] = full;
-        std::string responseStr = j.dump();
+        std::string responseStr = dumpJsonForClient(j);
 
         // 通过IO线程回调发送响应（线程安全）
-        auto connPtr = weakConn.lock();  // 尝试获取shared_ptr
-        if (connPtr) {
-            ioLoop->runInLoop([connPtr, responseStr]() {
-                // 在IO线程中发送响应
-                uint32_t lenNet = htonl(static_cast<uint32_t>(responseStr.size()));
-                uint32_t idNet  = htonl(RESPONSE_RECOMMEND_KEYWORDS);
-
-                std::string out;
-                out.resize(8 + responseStr.size());
-                std::memcpy(&out[0], &lenNet, 4);
-                std::memcpy(&out[4], &idNet, 4);
-                if (!responseStr.empty()) {
-                    std::memcpy(&out[8], responseStr.data(), responseStr.size());
-                }
-                
-                connPtr->send(out);
-                std::cout << "[ThreadPool] Response sent for recommend keywords" << std::endl;
-            });
-        } else {
-            std::cout << "[ThreadPool] Connection already closed, skipping response" << std::endl;
-        }
+        sendPreparedFrame(ioLoop, weakConn, RESPONSE_RECOMMEND_KEYWORDS, responseStr,
+                          "[ThreadPool] Response sent for recommend keywords, size: ");
     });
 }
 
@@ -219,56 +247,47 @@ void ProtocolParser::handleSearchWebpagesAsync(const TcpConnectionPtr& conn, con
     
     // 将计算任务提交到线程池
     _threadPool->enqueue([weakConn, ioLoop, content, webPageSearcher]() {
-        std::cout << "[ThreadPool] handleSearchWebpagesAsync executing for: " << content << std::endl;
-        
-        // 在计算线程中执行搜索
-        auto results = webPageSearcher->search(content, 10);
-        
-        // 构造JSON响应
-        nlohmann::json j;
-        j["id"] = RESPONSE_SEARCH_WEBPAGES;
-        j["query"] = content;
-        j["total"] = results.size();
-        j["results"] = nlohmann::json::array();
-        
-        for (const auto& result : results) {
-            nlohmann::json item;
-            item["docId"] = result.docId;
-            item["score"] = result.score;
-            item["title"] = result.title;
-            item["url"] = result.url;
-            item["summary"] = result.summary;
-            j["results"].push_back(item);
-        }
-        
-        std::string responseStr = j.dump();
-        
-        // 写入Redis缓存（每个计算线程有独立Redis连接）
-        auto& redis = RedisCache::getInstance();
-        if (redis.isConnected()) {
-            redis.setSearchResult(content, responseStr, 1800);
-        }
+        try {
+            std::cout << "[ThreadPool] handleSearchWebpagesAsync executing for: " << content << std::endl;
 
-        // 通过IO线程回调发送响应（线程安全）
-        auto connPtr = weakConn.lock();
-        if (connPtr) {
-            ioLoop->runInLoop([connPtr, responseStr]() {
-                uint32_t lenNet = htonl(static_cast<uint32_t>(responseStr.size()));
-                uint32_t idNet  = htonl(RESPONSE_SEARCH_WEBPAGES);
+            // 在计算线程中执行搜索
+            auto results = webPageSearcher->search(content, 10);
 
-                std::string out;
-                out.resize(8 + responseStr.size());
-                std::memcpy(&out[0], &lenNet, 4);
-                std::memcpy(&out[4], &idNet, 4);
-                if (!responseStr.empty()) {
-                    std::memcpy(&out[8], responseStr.data(), responseStr.size());
-                }
-                
-                connPtr->send(out);
-                std::cout << "[ThreadPool] Response sent for search webpages, size: " << responseStr.size() << std::endl;
-            });
-        } else {
-            std::cout << "[ThreadPool] Connection already closed, skipping response" << std::endl;
+            // 构造JSON响应
+            nlohmann::json j;
+            j["id"] = RESPONSE_SEARCH_WEBPAGES;
+            j["query"] = content;
+            j["total"] = results.size();
+            j["results"] = nlohmann::json::array();
+
+            for (const auto& result : results) {
+                nlohmann::json item;
+                item["docId"] = result.docId;
+                item["score"] = result.score;
+                item["title"] = result.title;
+                item["url"] = result.url;
+                item["summary"] = result.summary;
+                j["results"].push_back(item);
+            }
+
+            std::string responseStr = dumpJsonForClient(j);
+
+            // 写入Redis缓存（每个计算线程有独立Redis连接）
+            auto& redis = RedisCache::getInstance();
+            if (redis.isConnected()) {
+                redis.setSearchResult(content, responseStr, 1800);
+            }
+
+            sendPreparedFrame(ioLoop, weakConn, RESPONSE_SEARCH_WEBPAGES, responseStr,
+                              "[ThreadPool] Response sent for search webpages, size: ");
+        } catch (const std::exception& ex) {
+            std::string responseStr = makeErrorResponse(RESPONSE_SEARCH_WEBPAGES, content, ex.what());
+            sendPreparedFrame(ioLoop, weakConn, RESPONSE_SEARCH_WEBPAGES, responseStr,
+                              "[ThreadPool] Error response sent for search webpages, size: ");
+        } catch (...) {
+            std::string responseStr = makeErrorResponse(RESPONSE_SEARCH_WEBPAGES, content, "unknown search error");
+            sendPreparedFrame(ioLoop, weakConn, RESPONSE_SEARCH_WEBPAGES, responseStr,
+                              "[ThreadPool] Error response sent for search webpages, size: ");
         }
     });
 }

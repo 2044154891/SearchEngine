@@ -57,7 +57,10 @@ void TcpConnection::send(const std::string &buf)
         }
         else
         {
-            loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, buf.c_str(), buf.size()));
+            std::string message(buf);
+            loop_->runInLoop([self = shared_from_this(), message = std::move(message)]() {
+                self->sendInLoop(message.data(), message.size());
+            });
         }
     }
 }
