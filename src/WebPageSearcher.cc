@@ -1,5 +1,6 @@
 #include "WebPageSearcher.h"
 #include "Logger.h"
+#include "RedisCache.h"
 #include "SplitToolCppJieba.h"
 #include "Config.h"
 #include "FileUtils.h"
@@ -110,15 +111,22 @@ void WebPageSearcher::loadPageOffset() {
 }
 
 std::string WebPageSearcher::getPageContent(int docId) {
-    // 直接从磁盘读取，不使用本地缓存（避免锁竞争）
     auto it = _pageOffset.find(docId);
     if (it == _pageOffset.end()) {
         return "";
     }
-    
+
+    auto& redis = RedisCache::getInstance();
+    if (redis.isConnected()) {
+        std::string cached = redis.getPageContent(docId);
+        if (!cached.empty()) {
+            return cached;
+        }
+    }
+
     long long offset = it->second.first;
     long long length = it->second.second;
-    
+
     if (_pageFd < 0) {
         ERROR("WebPageSearcher: page file is not open: %s", _pagePath.c_str()) << std::endl;
         return "";
@@ -153,6 +161,10 @@ std::string WebPageSearcher::getPageContent(int docId) {
 
         ERROR("WebPageSearcher: pread failed for docId=%d, error: %s", docId, std::strerror(errno)) << std::endl;
         return "";
+    }
+
+    if (redis.isConnected()) {
+        redis.setPageContent(docId, content);
     }
 
     return content;
