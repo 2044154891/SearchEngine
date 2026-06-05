@@ -42,7 +42,6 @@ dist/
 
 # Generated index/data output
 /data/*.dat
-/documents/
 **/out/
 
 # Editor and OS files
