@@ -154,38 +154,30 @@ C++ 服务二进制帧格式：
 
 ### 10.1 C++ 构建
 
-当前项目同时保留了根目录手写 `Makefile` 和 CMake 构建文件：
+当前项目以 CMake 作为推荐构建入口，同时保留根目录手写 `Makefile` 作为旧构建方式：
 
-- `Makefile`：项目原有/默认构建入口，执行 `make` 后产物输出到项目根目录 `bin/`。
-- `CMakeLists.txt`、`src/CMakeLists.txt`、`RSS/CMakeLists.txt`、`simhash/CMakeLists.txt`：CMake 构建入口，执行 out-of-source 构建后产物输出到 `build/bin/`。
+- `CMakeLists.txt`、`src/CMakeLists.txt`、`RSS/CMakeLists.txt`、`simhash/CMakeLists.txt`：推荐构建入口，执行 out-of-source 构建，最终可执行文件输出到项目根目录 `bin/`。
+- `Makefile`：项目原有构建入口，仅作为兼容/排障备用。
 
-两套构建方式的主要可执行目标基本一致：
+CMake 构建会生成这些可执行目标：
 
 - `DataClean`
 - `CreateDict`
 - `BuildIndex`
 - `SearchEngine`
 
-但当前 CMake 不是对根目录 `Makefile` 的完全逐行等价重写，而是参考 Makefile 整理出的 CMake 版本。需要注意的差异：
-
-- 输出目录不同：Makefile 输出到 `bin/`，CMake 输出到 `build/bin/`。
-- 编译宏/选项不完全一致：Makefile 默认带 `-DUSE_GLOG -UNDEBUG`，CMake 当前设置了 `-Wall -Wextra -g`，但没有显式添加 `USE_GLOG` 和 `-UNDEBUG`。
-- 源文件集合略有差异：CMake 的 `SearchEngine` 目标包含 `src/WebPage.cc`，而根目录 Makefile 的 `SearchEngine` 链接列表中没有对应的 `WebPage.o`。
-- 链接方式不同：Makefile 手写 `-lhiredis -lredis++ -Wl,-rpath,/usr/local/lib`；CMake 使用 `find_library` 查找 `glog`、`hiredis`，并手动指定 `redis++` 库路径。
-
-使用 Makefile：
-
-```bash
-make
-```
-
 使用 CMake：
 
 ```bash
-mkdir -p build
-cd build
-cmake ..
-make -j4
+cmake -S . -B build
+cmake --build build -j4
+```
+
+从 0 重新配置并构建：
+
+```bash
+cmake -S . -B build --fresh
+cmake --build build -j4
 ```
 
 ### 10.2 离线流程

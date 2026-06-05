@@ -12,13 +12,16 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # 输出目录设置
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # 编译选项
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+add_compile_definitions(USE_GLOG)
+add_compile_options(-UNDEBUG)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 查找线程库
 find_package(Threads REQUIRED)
@@ -37,10 +40,13 @@ message(STATUS "Found hiredis: ${HIREDIS_LIBRARY}")
 
 # 3. redis++ (Redis C++客户端)
 # 注意: redis++ 需要手动指定头文件和库
-set(REDIS_PLUS_PLUS_INCLUDE_DIR "/usr/local/include")
-set(REDIS_PLUS_PLUS_LIBRARY "/usr/local/lib/libredis++.so")
+set(REDIS_PLUS_PLUS_INCLUDE_DIR "/usr/local/include" CACHE PATH "redis++ include directory")
+set(REDIS_PLUS_PLUS_LIBRARY "/usr/local/lib/libredis++.so" CACHE FILEPATH "redis++ library")
 if(NOT EXISTS ${REDIS_PLUS_PLUS_LIBRARY})
     set(REDIS_PLUS_PLUS_LIBRARY "/usr/local/lib/libredis++.a")
+endif()
+if(NOT EXISTS ${REDIS_PLUS_PLUS_LIBRARY})
+    message(FATAL_ERROR "redis++ library not found. Set REDIS_PLUS_PLUS_LIBRARY or install redis-plus-plus under /usr/local/lib.")
 endif()
 message(STATUS "Using redis++: ${REDIS_PLUS_PLUS_LIBRARY}")
 

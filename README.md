@@ -13,19 +13,20 @@
 
 ## 快速开始
 
-### 1) 编译
+### 1) 编译（CMake）
 
 ```bash
-make
+cmake -S . -B build
+cmake --build build -j4
 ```
 
-或使用 CMake：
+构建产物会输出到项目根目录 `bin/`。
+
+如果需要重新从 0 构建：
 
 ```bash
-mkdir -p build
-cd build
-cmake ..
-make -j4
+cmake -S . -B build --fresh
+cmake --build build -j4
 ```
 
 ### 2) 离线数据处理
@@ -64,7 +65,7 @@ Search_Engine/
 ├── documents/               # 项目文档
 │   └── technical-guide.md   # 统一技术文档
 ├── CMakeLists.txt
-├── Makefile
+├── Makefile                 # 旧构建入口，日常优先使用 CMake
 └── README.md
 ```
 
