@@ -57,27 +57,28 @@ static bool readBlock(ifstream& dataIn, std::streamoff offset, size_t length, st
 int main(int argc, char** argv) {
     // 读取配置
     const string conf = Config::configFilePath;
-    const string oldPagePath  = read_config_value(conf, "old_webpage_path");
-    const string oldIndexPath = read_config_value(conf, "old_webpage_offset_path");
-    const string newPagePath  = read_config_value(conf, "new_webpage_path");
-    const string newIndexPath = read_config_value(conf, "new_webpage_offset_path");
-    if (oldPagePath.empty() || oldIndexPath.empty() || newPagePath.empty() || newIndexPath.empty()) {
+    const string rawPageStorePath    = read_config_value(conf, "raw_page_store_path");
+    const string rawPageOffsetPath   = read_config_value(conf, "raw_page_offset_path");
+    const string dedupPageStorePath  = read_config_value(conf, "dedup_page_store_path");
+    const string dedupPageOffsetPath = read_config_value(conf, "dedup_page_offset_path");
+    if (rawPageStorePath.empty() || rawPageOffsetPath.empty() ||
+        dedupPageStorePath.empty() || dedupPageOffsetPath.empty()) {
         cerr << "Error: missing required paths in config: " << conf << "\n";
         return 1;
     }
 
-    // 读取旧索引
+    // 读取原始偏移表
     vector<OffsetRecord> records;
-    if (!readOffsets(oldIndexPath, records)) return 1;
+    if (!readOffsets(rawPageOffsetPath, records)) return 1;
     if (records.empty()) {
-        cerr << "Warning: no records found in offset file: " << oldIndexPath << "\n";
+        cerr << "Warning: no records found in offset file: " << rawPageOffsetPath << "\n";
         return 0;
     }
 
-    // 打开旧网页库
-    ifstream dataIn(oldPagePath, std::ios::in | std::ios::binary);
+    // 打开原始网页库
+    ifstream dataIn(rawPageStorePath, std::ios::in | std::ios::binary);
     if (!dataIn) {
-        cerr << "Error: cannot open data file: " << oldPagePath << "\n";
+        cerr << "Error: cannot open data file: " << rawPageStorePath << "\n";
         return 1;
     }
 
@@ -136,15 +137,15 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 写入新网页库与新索引（保持原 docid，不 renumber）
-    ofstream newData(newPagePath, std::ios::out | std::ios::binary | std::ios::trunc);
+    // 写入去重网页库与偏移表（保持原 docid，不 renumber）
+    ofstream newData(dedupPageStorePath, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!newData) {
-        cerr << "Error: cannot open new data file for write: " << newPagePath << "\n";
+        cerr << "Error: cannot open dedup data file for write: " << dedupPageStorePath << "\n";
         return 1;
     }
-    ofstream newIdx(newIndexPath, std::ios::out | std::ios::trunc);
+    ofstream newIdx(dedupPageOffsetPath, std::ios::out | std::ios::trunc);
     if (!newIdx) {
-        cerr << "Error: cannot open new index file for write: " << newIndexPath << "\n";
+        cerr << "Error: cannot open dedup offset file for write: " << dedupPageOffsetPath << "\n";
         return 1;
     }
 
@@ -165,8 +166,8 @@ int main(int argc, char** argv) {
         currentOffset += static_cast<std::streamoff>(block.size());
     }
 
-    cout << "Dedup finished. Kept " << keptIdx.size() << " of " << records.size()
-         << ". New data: " << newPagePath << ", new index: " << newIndexPath << endl;
+    cout << "Dedup finished. Kept " << keptDocIds.size() << " of " << records.size()
+         << ". Dedup data: " << dedupPageStorePath << ", dedup offset: " << dedupPageOffsetPath << endl;
     return 0;
 }
 

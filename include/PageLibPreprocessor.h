@@ -47,10 +47,10 @@ private:
     std::unordered_map<std::string, int> _DocFreq;
 
     // 路径配置（来自 conf）
-    std::string _newPagePath;               // 去重后的网页库
-    std::string _newIndexPath;              // 去重后的偏移库
-    std::string _invertIndexPath;           // 倒排索引输出路径
-    std::string _wordFreqPath;              // 词频输出路径
+    std::string _dedupPageStorePath;        // 去重后的网页库
+    std::string _dedupPageOffsetPath;       // 去重后的偏移库
+    std::string _invertedIndexPath;         // 倒排索引输出路径
+    std::string _wordFrequencyPath;         // 词频输出路径
     std::string _wordInPagePath;            // 每词在文档中的出现次数输出路径
 
     // 辅助方法

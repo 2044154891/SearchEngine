@@ -1,2 +1,59 @@
-bin/
+# Build output
+simhash/dedupe_main
+/bin/
+/build/
+**/build/
+cmake-build-*/
+**/cmake-build-*/
+CMakeFiles/
+**/CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# C/C++ artifacts
 *.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.d
+*.gcda
+*.gcno
+*.gcov
+
+# Node dependencies and frontend output
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+
+# Logs and runtime files
+/log/*
+!/log/.gitkeep
+*.log
+*.pid
+
+# Generated index/data output
+/data/*.dat
+/documents/
+**/out/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment files
+.env
+.env.*
+!.env.example

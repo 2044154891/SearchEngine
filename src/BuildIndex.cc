@@ -42,19 +42,19 @@ void printUsage() {
     std::cout << "  4. 保存索引文件" << std::endl;
 }
 
-// 读取去重后的网页库，返回docId到内容的映射
-std::unordered_map<int, std::string> loadNewWebpage(const std::string& pagePath, 
-                                                      const std::string& offsetPath) {
+// 读取网页库，返回 docId 到内容的映射
+std::unordered_map<int, std::string> loadPageStore(const std::string& pageStorePath,
+                                                   const std::string& pageOffsetPath) {
     std::unordered_map<int, std::string> pages;
-    std::ifstream offsetIn(offsetPath);
+    std::ifstream offsetIn(pageOffsetPath);
     if (!offsetIn.is_open()) {
-        std::cerr << "Error: cannot open offset file: " << offsetPath << std::endl;
+        std::cerr << "Error: cannot open offset file: " << pageOffsetPath << std::endl;
         return pages;
     }
     
-    std::ifstream pageIn(pagePath, std::ios::binary);
+    std::ifstream pageIn(pageStorePath, std::ios::binary);
     if (!pageIn.is_open()) {
-        std::cerr << "Error: cannot open page file: " << pagePath << std::endl;
+        std::cerr << "Error: cannot open page file: " << pageStorePath << std::endl;
         return pages;
     }
     
@@ -104,16 +104,16 @@ std::string extractText(const std::string& content) {
     return text;
 }
 
-// 执行去重，返回保留的docId列表
-std::vector<int> performDeduplication(const std::string& oldPagePath,
-                                         const std::string& oldOffsetPath,
-                                         const std::string& newPagePath,
-                                         const std::string& newOffsetPath) {
+// 执行去重，返回保留的 docId 列表
+std::vector<int> performDeduplication(const std::string& rawPageStorePath,
+                                      const std::string& rawPageOffsetPath,
+                                      const std::string& dedupPageStorePath,
+                                      const std::string& dedupPageOffsetPath) {
     std::cout << "  加载原始网页库..." << std::endl;
-    std::unordered_map<int, std::string> pages = loadNewWebpage(oldPagePath, oldOffsetPath);
+    std::unordered_map<int, std::string> pages = loadPageStore(rawPageStorePath, rawPageOffsetPath);
     
     if (pages.empty()) {
-        std::cerr << "Error: no pages loaded from old webpage" << std::endl;
+        std::cerr << "Error: no pages loaded from raw page store" << std::endl;
         return {};
     }
     
@@ -152,11 +152,11 @@ std::vector<int> performDeduplication(const std::string& oldPagePath,
     std::cout << "  去重后保留网页数量: " << keptIndices.size() << std::endl;
     
     // 写出去重后的网页库和偏移文件
-    std::ofstream newPageOut(newPagePath, std::ios::binary);
-    std::ofstream newOffsetOut(newOffsetPath);
+    std::ofstream dedupPageOut(dedupPageStorePath, std::ios::binary);
+    std::ofstream dedupOffsetOut(dedupPageOffsetPath);
     
-    if (!newPageOut.is_open() || !newOffsetOut.is_open()) {
-        std::cerr << "Error: cannot create new webpage files" << std::endl;
+    if (!dedupPageOut.is_open() || !dedupOffsetOut.is_open()) {
+        std::cerr << "Error: cannot create dedup page store files" << std::endl;
         return {};
     }
     
@@ -168,26 +168,26 @@ std::vector<int> performDeduplication(const std::string& oldPagePath,
         int oldDocId = docIds[idx];
         const std::string& content = pages[oldDocId];
         
-        // 写入新网页库
-        std::streampos start = newPageOut.tellp();
-        newPageOut << content;
-        std::streampos end = newPageOut.tellp();
+        // 写入去重网页库
+        std::streampos start = dedupPageOut.tellp();
+        dedupPageOut << content;
+        std::streampos end = dedupPageOut.tellp();
         
         long long offset = static_cast<long long>(start);
         long long length = static_cast<long long>(end - start);
         
         // 写入偏移文件（使用新的docId从1开始）
         ++newDocId;
-        newOffsetOut << newDocId << ' ' << offset << ' ' << length << '\n';
+        dedupOffsetOut << newDocId << ' ' << offset << ' ' << length << std::endl;
         
         keptDocIds.push_back(oldDocId);
     }
     
-    newPageOut.close();
-    newOffsetOut.close();
+    dedupPageOut.close();
+    dedupOffsetOut.close();
     
-    std::cout << "  去重后网页库已保存: " << newPagePath << std::endl;
-    std::cout << "  去重后偏移文件已保存: " << newOffsetPath << std::endl;
+    std::cout << "  去重后网页库已保存: " << dedupPageStorePath << std::endl;
+    std::cout << "  去重后偏移文件已保存: " << dedupPageOffsetPath << std::endl;
     
     return keptDocIds;
 }
@@ -214,19 +214,19 @@ int main(int argc, char* argv[]) {
     Configuration* cfg = Configuration::getInstance(Config::configFilePath);
     auto& configMap = cfg->getConfigMap();
     
-    std::string ripedir = configMap.count("webpage_path") ? 
-        configMap["webpage_path"] : std::string("/home/zhang/Search_Engine/yuliao/人民网语料");
-    std::string storedir = configMap.count("old_webpage_path") ? 
-        configMap["old_webpage_path"] : std::string("/home/zhang/Search_Engine/data/ripepage.dat");
-    std::string offsetfile = configMap.count("old_webpage_offset_path") ? 
-        configMap["old_webpage_offset_path"] : std::string("/home/zhang/Search_Engine/data/oldoffset.dat");
+    std::string rssCorpusDir = configMap.count("rss_corpus_dir") ? 
+        configMap["rss_corpus_dir"] : std::string("/home/zhang/Search_Engine/yuliao/人民网语料");
+    std::string rawPageStorePath = configMap.count("raw_page_store_path") ? 
+        configMap["raw_page_store_path"] : std::string("/home/zhang/Search_Engine/data/ripepage.dat");
+    std::string rawPageOffsetPath = configMap.count("raw_page_offset_path") ? 
+        configMap["raw_page_offset_path"] : std::string("/home/zhang/Search_Engine/data/oldoffset.dat");
     
-    std::cout << "  网页目录: " << ripedir << std::endl;
-    std::cout << "  输出文件: " << storedir << std::endl;
-    std::cout << "  偏移文件: " << offsetfile << std::endl;
+    std::cout << "  网页目录: " << rssCorpusDir << std::endl;
+    std::cout << "  原始网页库: " << rawPageStorePath << std::endl;
+    std::cout << "  原始偏移表: " << rawPageOffsetPath << std::endl;
     
     // 创建 RSS Reader 并解析 XML
-    RssReader rssReader(ripedir, storedir, offsetfile);
+    RssReader rssReader(rssCorpusDir, rawPageStorePath, rawPageOffsetPath);
     rssReader.processAll();
     
     std::cout << "  XML 解析完成!" << std::endl;
@@ -236,15 +236,18 @@ int main(int argc, char* argv[]) {
     std::cout << "[步骤 2/4] 网页去重 (SimHash)..." << std::endl;
     std::cout << "----------------------------------------" << std::endl;
     
-    std::string newPagePath = configMap.count("new_webpage_path") ? 
-        configMap["new_webpage_path"] : std::string("/home/zhang/Search_Engine/data/newripepage.dat");
-    std::string newOffsetPath = configMap.count("new_webpage_offset_path") ? 
-        configMap["new_webpage_offset_path"] : std::string("/home/zhang/Search_Engine/data/newoffset.dat");
+    std::string dedupPageStorePath = configMap.count("dedup_page_store_path") ? 
+        configMap["dedup_page_store_path"] : std::string("/home/zhang/Search_Engine/data/newripepage.dat");
+    std::string dedupPageOffsetPath = configMap.count("dedup_page_offset_path") ? 
+        configMap["dedup_page_offset_path"] : std::string("/home/zhang/Search_Engine/data/newoffset.dat");
     
-    std::cout << "  原始网页库: " << storedir << std::endl;
-    std::cout << "  去重后网页库: " << newPagePath << std::endl;
+    std::cout << "  原始网页库: " << rawPageStorePath << std::endl;
+    std::cout << "  去重后网页库: " << dedupPageStorePath << std::endl;
     
-    std::vector<int> keptDocIds = performDeduplication(storedir, offsetfile, newPagePath, newOffsetPath);
+    std::vector<int> keptDocIds = performDeduplication(rawPageStorePath,
+                                                       rawPageOffsetPath,
+                                                       dedupPageStorePath,
+                                                       dedupPageOffsetPath);
     
     if (keptDocIds.empty()) {
         std::cerr << "Error: deduplication failed, no pages kept" << std::endl;
@@ -261,7 +264,7 @@ int main(int argc, char* argv[]) {
     PageLibPreprocessor preprocessor;
     
     std::cout << "  加载去重后的网页库..." << std::endl;
-    preprocessor.load();       // 1. 加载网页库（已修改为读取new_webpage_path）
+    preprocessor.load();       // 1. 加载去重后的网页库
     
     std::cout << "  计算 TF-IDF 权重..." << std::endl;
     preprocessor.calculate();  // 2. 计算TF-IDF权重

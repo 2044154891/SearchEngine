@@ -39,29 +39,29 @@ PageLibPreprocessor::~PageLibPreprocessor() {
 
 void PageLibPreprocessor::initPathsFromConfig() {
     const std::string conf = Config::configFilePath;
-    _newPagePath      = read_config_value(conf, "new_webpage_path");
-    _newIndexPath     = read_config_value(conf, "new_webpage_offset_path");
-    _invertIndexPath  = read_config_value(conf, "invertindex_path");
-    _wordFreqPath     = read_config_value(conf, "wordfrequence_path");
-    _wordInPagePath   = read_config_value(conf, "wordinpage_path");
+    _dedupPageStorePath  = read_config_value(conf, "dedup_page_store_path");
+    _dedupPageOffsetPath = read_config_value(conf, "dedup_page_offset_path");
+    _invertedIndexPath   = read_config_value(conf, "web_inverted_index_path");
+    _wordFrequencyPath   = read_config_value(conf, "web_word_frequency_path");
+    _wordInPagePath      = read_config_value(conf, "web_word_in_page_path");
 }
 
 void PageLibPreprocessor::load() {
     initPathsFromConfig();
     loadStopWordsOnce();
-    if (_newPagePath.empty() || _newIndexPath.empty()) {
-        std::cerr << "PageLibPreprocessor: missing new page/index paths" << "\n";
+    if (_dedupPageStorePath.empty() || _dedupPageOffsetPath.empty()) {
+        std::cerr << "PageLibPreprocessor: missing dedup page store/offset paths" << "\n";
         return;
     }
 
-    std::ifstream idxIn(_newIndexPath);
+    std::ifstream idxIn(_dedupPageOffsetPath);
     if (!idxIn.is_open()) {
-        std::cerr << "PageLibPreprocessor: cannot open index file: " << _newIndexPath << "\n";
+        std::cerr << "PageLibPreprocessor: cannot open offset file: " << _dedupPageOffsetPath << "\n";
         return;
     }
-    std::ifstream pageIn(_newPagePath, std::ios::binary);
+    std::ifstream pageIn(_dedupPageStorePath, std::ios::binary);
     if (!pageIn.is_open()) {
-        std::cerr << "PageLibPreprocessor: cannot open page file: " << _newPagePath << "\n";
+        std::cerr << "PageLibPreprocessor: cannot open page file: " << _dedupPageStorePath << "\n";
         return;
     }
 
@@ -202,13 +202,13 @@ void PageLibPreprocessor::normalizeWeights() {
 }
 
 void PageLibPreprocessor::store() {
-    if (_invertIndexPath.empty() || _wordFreqPath.empty() || _wordInPagePath.empty()) {
+    if (_invertedIndexPath.empty() || _wordFrequencyPath.empty() || _wordInPagePath.empty()) {
         initPathsFromConfig();
     }
 
-    std::ofstream invOut(_invertIndexPath);
+    std::ofstream invOut(_invertedIndexPath);
     if (!invOut.is_open()) {
-        std::cerr << "PageLibPreprocessor: cannot open invert index for write: " << _invertIndexPath << "\n";
+        std::cerr << "PageLibPreprocessor: cannot open invert index for write: " << _invertedIndexPath << "\n";
         return;
     }
     for (const auto& kv : _InvertIndexTable) {
@@ -222,9 +222,9 @@ void PageLibPreprocessor::store() {
     }
     invOut.close();
 
-    std::ofstream wfOut(_wordFreqPath);
+    std::ofstream wfOut(_wordFrequencyPath);
     if (!wfOut.is_open()) {
-        std::cerr << "PageLibPreprocessor: cannot open word frequency for write: " << _wordFreqPath << "\n";
+        std::cerr << "PageLibPreprocessor: cannot open word frequency for write: " << _wordFrequencyPath << "\n";
         return;
     }
     for (const auto& kv : _Wordtotal) {

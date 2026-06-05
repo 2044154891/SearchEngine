@@ -18,7 +18,9 @@ struct RssItem
 class RssReader
 {
 public:
-    RssReader(const std::string& ripedir, const std::string& storedir, const std::string& offsetfile);
+    RssReader(const std::string& rssCorpusDir,
+              const std::string& rawPageStorePath,
+              const std::string& rawPageOffsetPath);
     // 处理目录中所有XML文件：边解析边写入到存储文件，并生成偏移库
     void processAll();
     
@@ -38,9 +40,9 @@ private:
                      const std::string &link,
                      const std::string &content);
     std::map<int, std::pair<int,int>> _offsetMap; // 存储每个网页的偏移量
-    std::string _ripedir;
-    std::string _storedir;
-    std::string _offsetfile;
+    std::string _rssCorpusDir;
+    std::string _rawPageStorePath;
+    std::string _rawPageOffsetPath;
     size_t _docId = 0;
 };
 

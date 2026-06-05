@@ -1,252 +1,95 @@
-# 搜索引擎项目 (Search Engine)
+# 搜索引擎项目（Search Engine）
 
 ## 项目简介
 
-这是一个基于C++开发的全文搜索引擎，支持中文和英文语料的处理、索引构建和关键词推荐等功能。
+这是一个基于 C++ 的全文搜索引擎，支持中文/英文语料处理、索引构建、关键词推荐与网页搜索。
 
-## 项目结构
+项目当前技术文档已统一整理，请优先阅读：
 
-```
-Search_Engine/
-├── bin/                    # 编译生成的可执行文件目录
-├── build/                  # CMake构建目录（生成的可执行文件在此）
-├── client/                 # 客户端代码
-│   └── client.cc          # 测试客户端
-├── conf/                   # 配置文件
-│   └── myconf.conf        # 主配置文件
-├── data/                   # 数据文件目录（索引、网页库等）
-├── include/                # 头文件目录
-│   ├── cppjieba/          # 中文分词库
-│   ├── nlohmann/          # JSON库
-│   └── redis++/           # Redis C++客户端
-├── log/                    # 日志目录
-├── RSS/                    # RSS订阅源解析模块
-├── simhash/                # SimHash去重模块
-├── src/                    # 源代码目录
-├── test/                   # 测试文件目录
-├── web/                    # 前端Web界面
-├── yuliao/                 # 语料库目录
-│   ├── art/                # 中文语料
-│   ├── clean_data/         # 清洗后的语料
-│   ├── english/            # 英文语料
-│   └── 人民网语料/          # 网页语料
-├── CMakeLists.txt          # CMake主配置文件
-├── Makefile                # 传统Makefile编译配置
-└── README.md               # 本文件
-```
+- `documents/technical-guide.md`
+- `documents/offline-index-data.md`
 
-## 核心功能模块
+---
 
-### 1. 语料处理 (DataClean)
-- 读取原始语料
-- 去除噪音数据（HTML标签、特殊字符等）
-- 生成清洗后的语料库
+## 快速开始
 
-### 2. 词典构建 (CreateDict)
-- 使用CppJieba进行中文分词
-- 去除停用词
-- 生成词典和词典索引
-
-### 3. 索引构建 (BuildIndex)
-- **RSS解析**: 解析XML网页源，生成原始网页库
-- **SimHash去重**: 基于海明距离（阈值=3）去除重复网页
-- **倒排索引**: TF-IDF权重计算，构建倒排索引
-- 完整流程：RSS → 去重 → 索引
-
-### 4. 搜索引擎服务器 (SearchEngineServer)
-- 基于Muduo网络库实现的TCP服务器
-- 支持多线程
-- 帧协议通信
-
-### 5. 网页搜索 (WebPageSearcher)
-- 加载倒排索引和网页偏移索引
-- 接收查询请求，返回Top-K搜索结果
-
-### 6. 关键词推荐 (KeyRecommander)
-- 基于编辑距离的智能推荐
-- 结合词频和相关性排序
-
-### 7. SimHash去重 (simhash/)
-- 基于海明距离的文档去重
-- 已集成到BuildIndex流程中
-
-## 编译指南
-
-### 方法一：使用Makefile（传统方式）
+### 1) 编译
 
 ```bash
-cd /home/zhang/Search_Engine
 make
 ```
 
-### 方法二：使用CMake（推荐）
+或使用 CMake：
 
 ```bash
-cd /home/zhang/Search_Engine
-
-# 创建并进入构建目录
 mkdir -p build
 cd build
-
-# 配置项目
 cmake ..
-
-# 编译（-j4 表示使用4个线程并行编译）
 make -j4
-
-# 可执行文件将生成在 build/bin/ 目录下
 ```
 
-### 编译各个模块（Makefile方式）
-
-```bash
-# 编译语料清洗模块
-make bin/DataClean
-
-# 编译词典构建模块
-make bin/CreateDict
-
-# 编译索引构建模块（包含去重）
-make bin/BuildIndex
-
-# 编译搜索引擎服务器
-make bin/SearchEngine
-```
-
-### 清理编译文件
-
-```bash
-# Makefile 清理
-make clean
-
-# CMake 清理
-rm -rf build/*
-```
-
-### 重新编译
-
-```bash
-# Makefile 方式
-make rebuild
-
-# CMake 方式
-rm -rf build && mkdir build && cd build && cmake .. && make -j4
-```
-
-## 运行指南
-
-### 第一步：语料清洗
+### 2) 离线数据处理
 
 ```bash
 ./bin/DataClean
-```
-
-### 第二步：构建词典
-
-```bash
 ./bin/CreateDict
-```
-
-### 第三步：构建索引（包含去重）
-
-```bash
 ./bin/BuildIndex
 ```
 
-此步骤完成：
-- RSS解析XML网页源
-- SimHash去重（基于海明距离阈值=3）
-- TF-IDF权重计算
-- 构建倒排索引
-
-### 第四步：启动服务器
+### 3) 启动在线服务
 
 ```bash
 ./bin/SearchEngine
 ```
 
-服务器默认配置：
-- IP: 192.168.147.131 (可配置)
-- 端口: 8888 (可配置)
-
-### 第五步：运行客户端测试
+### 4) 启动网关与前端（可选）
 
 ```bash
-cd client
-./client
+cd gateway && npm install && npm start
+cd web && npm install && npm run dev
 ```
 
-或重新编译客户端：
+---
 
-```bash
-cd client
-make
+## 项目目录（简版）
+
+```text
+Search_Engine/
+├── conf/                    # 配置文件
+├── data/                    # 索引与网页库数据
+├── include/                 # 头文件与第三方头
+├── src/                     # C++ 核心源码
+├── gateway/                 # Node.js API 网关
+├── web/                     # Vue 前端
+├── documents/               # 项目文档
+│   └── technical-guide.md   # 统一技术文档
+├── CMakeLists.txt
+├── Makefile
+└── README.md
 ```
 
-## 配置文件说明
+---
 
-配置文件位于 `conf/myconf.conf`，主要配置项：
+## 核心能力
 
-```ini
-# 语料路径配置
-chinese_corpus_path = /home/zhang/Search_Engine/yuliao/art
-english_corpus_path = /home/zhang/Search_Engine/yuliao/english
-cleaned_corpus_path = /home/zhang/Search_Engine/yuliao/clean_data
+- 离线索引构建：RSS 解析 + SimHash 去重 + 倒排索引
+- 在线检索服务：多线程 TCP 服务 + 二进制帧协议
+- 查询能力：网页搜索、关键词推荐
+- Web 接入：Node.js 网关 + Vue 前端
 
-# 停用词配置
-chinese_stop_words = /home/zhang/Search_Engine/yuliao/stop_words_zh.txt
-english_stop_words = /home/zhang/Search_Engine/yuliao/stop_words_eng.txt
+---
 
-# 索引数据路径
-dictionary_path = /home/zhang/Search_Engine/data/dict.dat
-dictionary_index_path = /home/zhang/Search_Engine/data/dictindex.dat
-invertindex_path = /home/zhang/Search_Engine/data/invertindex.dat
+## 配置说明
 
-# 服务器配置
-server_ip = 192.168.147.131
-server_port = 8888
-```
+主要配置文件：`conf/myconf.conf`
 
-## 通信协议
+包含语料路径、停用词路径、索引路径、服务地址等关键项。部署到新机器前请先检查并调整路径/IP。
 
-客户端与服务器采用帧协议通信：
+---
 
-### 请求格式
-```
-[4字节消息长度][4字节任务ID][消息内容]
-```
+## 详细文档入口
 
-### 任务ID
-- `1` (TASK_RECOMMEND_KEYWORDS): 关键词推荐
-- `2` (TASK_SEARCH_WEBPAGES): 网页搜索
+完整架构、协议、模块职责、构建运行与配置说明请见：
 
-### 响应格式
-```
-[4字节消息长度][4字节响应ID][响应内容]
-```
-
-## 依赖项
-
-- **C++17** 及以上（使用CMake方式）
-- **C++11** 及以上（使用Makefile方式）
-- **CMake 3.10+**（用于CMake构建）
-- **CppJieba** (已包含在项目中)
-- **Muduo 网络库** (已包含在项目中)
-- **glog** (Google日志库)
-- **redis++ / hiredis** (Redis客户端)
-- **nlohmann/json** (已包含在项目中)
-
-## 注意事项
-
-1. 首次运行需要先执行语料清洗和词典构建
-2. 确保配置文件中的路径正确
-3. 服务器需要稳定的网络环境
-4. 客户端连接前确保服务器已启动
-
-## 开发者
-
-项目托管于 GitHub: https://github.com/2044154891/SearchEngine
-
-## 许可证
-
-MIT License
+- `documents/technical-guide.md`
+- `documents/offline-index-data.md`

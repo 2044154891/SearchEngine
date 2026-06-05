@@ -21,9 +21,9 @@ WebPageSearcher::~WebPageSearcher() {
 
 void WebPageSearcher::initPathsFromConfig() {
     const std::string conf = Config::configFilePath;
-    _pagePath = read_config_value(conf, "new_webpage_path");
-    _offsetPath = read_config_value(conf, "new_webpage_offset_path");
-    _invertIndexPath = read_config_value(conf, "invertindex_path");
+    _pagePath = read_config_value(conf, "dedup_page_store_path");
+    _offsetPath = read_config_value(conf, "dedup_page_offset_path");
+    _invertIndexPath = read_config_value(conf, "web_inverted_index_path");
 }
 
 void WebPageSearcher::loadIndex() {

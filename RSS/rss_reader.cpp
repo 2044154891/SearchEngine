@@ -10,19 +10,21 @@
 
 using namespace tinyxml2;
 
-RssReader::RssReader(const std::string& ripedir, const std::string& storedir, const std::string& offsetfile)
-    : _ripedir(ripedir)
-    , _storedir(storedir)
-    , _offsetfile(offsetfile)
+RssReader::RssReader(const std::string& rssCorpusDir,
+                     const std::string& rawPageStorePath,
+                     const std::string& rawPageOffsetPath)
+    : _rssCorpusDir(rssCorpusDir)
+    , _rawPageStorePath(rawPageStorePath)
+    , _rawPageOffsetPath(rawPageOffsetPath)
 {
     _offsetMap.clear();
 }
 
 void RssReader::processAll()
 {
-    DIR* dir = opendir(_ripedir.c_str());
+    DIR* dir = opendir(_rssCorpusDir.c_str());
     if (!dir) {
-        std::cerr << "Error: Cannot open directory: " << _ripedir << "\n";
+        std::cerr << "Error: Cannot open directory: " << _rssCorpusDir << "\n";
         return;
     }
     struct dirent* entry;
@@ -30,7 +32,7 @@ void RssReader::processAll()
         std::string name = entry->d_name;
         if (name == "." || name == "..") continue;
         if (name.empty() || name[0] == '.') continue; // skip hidden
-        std::string fullpath = _ripedir + "/" + name;
+        std::string fullpath = _rssCorpusDir + "/" + name;
         struct stat st{};
         if (stat(fullpath.c_str(), &st) != 0) continue;
         if (!S_ISREG(st.st_mode)) continue;
@@ -43,14 +45,14 @@ void RssReader::processAll()
 
 void RssReader::parseRss(const std::string& filename)
 {
-    std::ofstream storef(_storedir, std::ios::out | std::ios::app | std::ios::binary);
+    std::ofstream storef(_rawPageStorePath, std::ios::out | std::ios::app | std::ios::binary);
     if(!storef.is_open()) {
-        std::cerr << "Error opening output file: " << _storedir << std::endl;
+        std::cerr << "Error opening output file: " << _rawPageStorePath << std::endl;
         return;
     }
-    std::ofstream offsetOut(_offsetfile, std::ios::out | std::ios::app);
+    std::ofstream offsetOut(_rawPageOffsetPath, std::ios::out | std::ios::app);
     if(!offsetOut.is_open()) {
-        std::cerr << "Error opening offset file: " << _offsetfile << std::endl;
+        std::cerr << "Error opening offset file: " << _rawPageOffsetPath << std::endl;
         return;
     }
     
