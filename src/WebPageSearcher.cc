@@ -16,6 +16,67 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+namespace {
+
+const size_t kSummaryCharLimit = 120;
+const size_t kSummaryContextBefore = 40;
+
+size_t utf8CharLength(unsigned char c) {
+    if ((c & 0x80) == 0) return 1;
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    if ((c & 0xF8) == 0xF0) return 4;
+    return 1;
+}
+
+std::vector<size_t> buildUtf8Offsets(const std::string& text) {
+    std::vector<size_t> offsets;
+    offsets.reserve(text.size() + 1);
+
+    size_t pos = 0;
+    while (pos < text.size()) {
+        offsets.push_back(pos);
+
+        size_t len = utf8CharLength(static_cast<unsigned char>(text[pos]));
+        if (pos + len > text.size()) {
+            len = 1;
+        } else {
+            for (size_t i = 1; i < len; ++i) {
+                unsigned char c = static_cast<unsigned char>(text[pos + i]);
+                if ((c & 0xC0) != 0x80) {
+                    len = 1;
+                    break;
+                }
+            }
+        }
+
+        pos += len;
+    }
+
+    offsets.push_back(text.size());
+    return offsets;
+}
+
+size_t bytePosToCharIndex(const std::vector<size_t>& offsets, size_t bytePos) {
+    auto it = std::lower_bound(offsets.begin(), offsets.end(), bytePos);
+    if (it == offsets.end()) {
+        return offsets.empty() ? 0 : offsets.size() - 1;
+    }
+    return static_cast<size_t>(it - offsets.begin());
+}
+
+std::string trimAsciiWhitespace(const std::string& text) {
+    size_t start = text.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) {
+        return "";
+    }
+
+    size_t end = text.find_last_not_of(" \t\r\n");
+    return text.substr(start, end - start + 1);
+}
+
+} // namespace
+
 WebPageSearcher::WebPageSearcher() {
     initPathsFromConfig();
 }
@@ -199,21 +260,59 @@ std::string WebPageSearcher::generateSummary(const std::string& content, const s
     if (body.empty()) {
         body = content;
     }
-    
-    // 截取前200个字符作为摘要
-    size_t summaryLen = 200;
-    if (body.size() > summaryLen) {
-        // 尝试在空格处截断
-        size_t cutPos = body.find(' ', summaryLen);
-        if (cutPos != std::string::npos && cutPos < body.size()) {
-            body = body.substr(0, cutPos);
-        } else {
-            body = body.substr(0, summaryLen);
-        }
-        body += "...";
+
+    std::vector<size_t> offsets = buildUtf8Offsets(body);
+    size_t charCount = offsets.empty() ? 0 : offsets.size() - 1;
+    if (charCount <= kSummaryCharLimit) {
+        return body;
     }
-    
-    return body;
+
+    size_t hitBytePos = std::string::npos;
+    size_t hitCharLen = 0;
+    std::vector<std::string> queryWords = cutQuery(query);
+    for (const auto& word : queryWords) {
+        if (word.empty()) {
+            continue;
+        }
+
+        size_t pos = body.find(word);
+        if (pos != std::string::npos && (hitBytePos == std::string::npos || pos < hitBytePos)) {
+            hitBytePos = pos;
+            std::vector<size_t> wordOffsets = buildUtf8Offsets(word);
+            hitCharLen = wordOffsets.empty() ? 0 : wordOffsets.size() - 1;
+        }
+    }
+
+    size_t startChar = 0;
+    size_t endChar = std::min(kSummaryCharLimit, charCount);
+
+    if (hitBytePos != std::string::npos) {
+        size_t hitChar = bytePosToCharIndex(offsets, hitBytePos);
+        startChar = hitChar > kSummaryContextBefore ? hitChar - kSummaryContextBefore : 0;
+        endChar = std::min(startChar + kSummaryCharLimit, charCount);
+
+        size_t hitEndChar = std::min(hitChar + hitCharLen, charCount);
+        if (hitEndChar > endChar) {
+            endChar = hitEndChar;
+        }
+
+        if (endChar - startChar < kSummaryCharLimit && endChar == charCount) {
+            startChar = charCount > kSummaryCharLimit ? charCount - kSummaryCharLimit : 0;
+        }
+    }
+
+    size_t startByte = offsets[startChar];
+    size_t endByte = offsets[endChar];
+    std::string summary = trimAsciiWhitespace(body.substr(startByte, endByte - startByte));
+
+    if (startChar > 0) {
+        summary = "..." + summary;
+    }
+    if (endChar < charCount) {
+        summary += "...";
+    }
+
+    return summary;
 }
 
 std::vector<std::string> WebPageSearcher::cutQuery(const std::string& query) {

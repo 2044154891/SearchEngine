@@ -191,7 +191,7 @@
 - 再对 Top-K 结果做 `sort` 保证顺序稳定
 
 4. 取回网页并构造输出字段
-- 对每个 Top-K doc：`getPageContent(docId)` 根据 `(offset,length)` 从网页库中读取正文块，并取 `<title>` / `<link>` / `<content>` 来生成字段；`generateSummary()` 摘要取正文前 200 个字符并尽量在空格处截断，后加 `...`
+- 对每个 Top-K doc：`getPageContent(docId)` 根据 `(offset,length)` 从网页库中读取正文块，并取 `<title>` / `<link>` / `<content>` 来生成字段；`generateSummary()` 按 UTF-8 字符生成查询词相关片段，并只在实际截断时加 `...`
 
 最终返回：
 
