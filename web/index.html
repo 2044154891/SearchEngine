@@ -6,207 +6,559 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>搜索引擎</title>
+  <title>北辰全文检索</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
+
+    :root {
+      color-scheme: dark;
+      --bg: #070b13;
+      --line: #223149;
+      --line-soft: rgba(148, 163, 184, 0.18);
+      --text: #e5edf8;
+      --muted: #95a3b8;
+      --subtle: #64748b;
+      --accent: #20d3ee;
+      --accent-strong: #2dd4bf;
+      --danger: #fb7185;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding-top: 100px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        linear-gradient(135deg, rgba(32, 211, 238, 0.10) 0%, transparent 34%),
+        linear-gradient(215deg, rgba(45, 212, 191, 0.08) 0%, transparent 36%),
+        linear-gradient(180deg, #0a1020 0%, var(--bg) 48%, #05070d 100%);
+      color: var(--text);
     }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
     .container {
-      width: 100%;
-      max-width: 800px;
-      padding: 20px;
+      width: min(1080px, 100%);
+      margin: 0 auto;
+      padding: 56px 20px 48px;
     }
-    .search-box {
-      background: white;
-      border-radius: 50px;
-      padding: 10px 20px;
+
+    .topbar {
       display: flex;
       align-items: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 54px;
+      color: var(--muted);
+      font-size: 14px;
     }
-    .search-box input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 18px;
-      padding: 10px;
-    }
-    .search-box button {
-      background: #667eea;
-      color: white;
-      border: none;
-      padding: 12px 30px;
-      border-radius: 25px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .search-box button:hover {
-      background: #5568d3;
-    }
-    .tabs {
+
+    .brand {
       display: flex;
-      justify-content: center;
-      margin: 30px 0;
-      gap: 20px;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: 0;
     }
-    .tab {
-      padding: 10px 30px;
-      background: rgba(255,255,255,0.3);
-      color: white;
-      border: none;
-      border-radius: 20px;
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(32, 211, 238, 0.52);
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(32, 211, 238, 0.18), rgba(45, 212, 191, 0.08));
+      box-shadow: 0 0 24px rgba(32, 211, 238, 0.18);
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      left: 9px;
+      top: 9px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+    }
+
+    .status-pill {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(16, 24, 38, 0.7);
+    }
+
+    .hero {
+      max-width: 820px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 66px);
+      line-height: 1.05;
+      letter-spacing: 0;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .hero p {
+      color: var(--muted);
       font-size: 16px;
-      cursor: pointer;
-      transition: all 0.3s;
+      line-height: 1.7;
     }
-    .tab.active {
-      background: white;
-      color: #667eea;
+
+    .search-shell {
+      position: relative;
+      max-width: 860px;
+      margin: 0 auto;
     }
-    .results {
-      background: white;
-      border-radius: 10px;
-      padding: 20px;
-      margin-top: 20px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+
+    .search-box {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px 8px 18px;
+      border: 1px solid rgba(32, 211, 238, 0.32);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.92);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(18px);
     }
-    .result-item {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
+
+    .search-icon {
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      position: relative;
+      opacity: 0.9;
     }
-    .result-item:last-child {
-      border-bottom: none;
+
+    .search-icon::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 2px;
+      right: -6px;
+      bottom: -3px;
+      background: var(--accent);
+      transform: rotate(45deg);
+      border-radius: 2px;
     }
-    .result-title {
-      color: #1a0dab;
+
+    .search-box input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
       font-size: 18px;
-      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+
+    .search-box input::placeholder {
+      color: var(--subtle);
+    }
+
+    .clear-btn,
+    .search-btn,
+    .ghost-btn {
+      cursor: pointer;
+      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .clear-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .clear-btn:hover {
+      color: var(--text);
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    .search-btn {
+      min-width: 92px;
+      height: 46px;
+      border-radius: 8px;
+      color: #031016;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      font-weight: 700;
+      box-shadow: 0 12px 28px rgba(32, 211, 238, 0.24);
+    }
+
+    .search-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .search-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+      transform: none;
+    }
+
+    .suggest-panel {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + 10px);
+      left: 0;
+      right: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(12, 18, 30, 0.98);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .ghost-btn {
+      color: var(--accent);
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .ghost-btn:hover {
+      color: var(--accent-strong);
+    }
+
+    .suggest-list {
+      list-style: none;
+      max-height: 310px;
+      overflow-y: auto;
+    }
+
+    .suggest-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--text);
+      background: transparent;
+      text-align: left;
       cursor: pointer;
     }
-    .result-title:hover {
-      text-decoration: underline;
+
+    .suggest-item:last-child {
+      border-bottom: 0;
     }
-    .result-url {
-      color: #006621;
+
+    .suggest-item:hover {
+      background: rgba(32, 211, 238, 0.08);
+    }
+
+    .suggest-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suggest-meta {
+      flex: 0 0 auto;
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .panel-empty {
+      padding: 18px 16px;
+      color: var(--muted);
       font-size: 14px;
-      margin-bottom: 5px;
     }
-    .result-summary {
-      color: #545454;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .suggestions {
-      background: white;
-      border-radius: 10px;
-      margin-top: 10px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+
+    .results {
+      max-width: 920px;
+      margin: 42px auto 0;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: rgba(9, 14, 25, 0.64);
+      box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
       overflow: hidden;
     }
-    .suggestion-item {
-      padding: 12px 20px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      transition: background 0.2s;
+
+    .results-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 14px;
     }
-    .suggestion-item:hover {
-      background: #f5f5f5;
+
+    .results-query {
+      color: var(--text);
+      font-weight: 700;
     }
-    .suggestion-item:last-child {
-      border-bottom: none;
+
+    .result-item {
+      padding: 18px 20px 20px;
+      border-bottom: 1px solid var(--line-soft);
     }
-    .loading {
+
+    .result-item:last-child {
+      border-bottom: 0;
+    }
+
+    .result-title {
+      display: inline-block;
+      max-width: 100%;
+      color: #83e8ff;
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 700;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .result-title:hover {
+      color: var(--accent-strong);
+      text-decoration: underline;
+    }
+
+    .result-url {
+      margin: 7px 0 9px;
+      color: #7dd3fc;
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      opacity: 0.82;
+    }
+
+    .result-summary {
+      color: #c6d3e3;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .state {
+      padding: 28px 20px;
+      color: var(--muted);
       text-align: center;
-      padding: 20px;
-      color: #666;
+      line-height: 1.7;
     }
-    .error {
-      text-align: center;
+
+    .state.error {
+      color: var(--danger);
+    }
+
+    .welcome {
+      max-width: 760px;
+      margin: 36px auto 0;
       padding: 20px;
-      color: #e74c3c;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: rgba(12, 18, 30, 0.5);
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    @media (max-width: 720px) {
+      .container {
+        padding: 28px 14px 34px;
+      }
+
+      .topbar {
+        margin-bottom: 38px;
+      }
+
+      .status-pill {
+        display: none;
+      }
+
+      .hero {
+        text-align: left;
+        margin-bottom: 22px;
+      }
+
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .search-box {
+        min-height: 58px;
+        gap: 9px;
+        padding: 8px;
+      }
+
+      .search-box input {
+        font-size: 16px;
+      }
+
+      .search-btn {
+        min-width: 70px;
+        height: 42px;
+      }
+
+      .clear-btn {
+        width: 30px;
+      }
+
+      .results {
+        margin-top: 32px;
+      }
+
+      .results-head,
+      .result-item {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
     }
   </style>
 </head>
 <body>
   <div id="app" class="container">
-    <div class="search-box">
-      <input 
-        type="text" 
-        v-model="query" 
-        @keyup.enter="search"
-        @input="onInput"
-        placeholder="请输入搜索内容..."
-      >
-      <button @click="search">搜索</button>
-    </div>
-    
-    <div class="tabs">
-      <button 
-        class="tab" 
-        :class="{ active: searchType === 'web' }"
-        @click="searchType = 'web'; search()"
-      >
-        网页搜索
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: searchType === 'keyword' }"
-        @click="searchType = 'keyword'; search()"
-      >
-        关键词推荐
-      </button>
-    </div>
-
-    <!-- 加载中 -->
-    <div v-if="loading" class="results">
-      <div class="loading">加载中...</div>
-    </div>
-
-    <!-- 错误提示 -->
-    <div v-else-if="error" class="results">
-      <div class="error">{{ error }}</div>
-    </div>
-
-    <!-- 无结果提示 -->
-    <div v-else-if="!loading && !error && !query.trim()" class="results">
-      <div class="loading">请输入搜索内容...</div>
-    </div>
-
-    <div v-else-if="!loading && !error && query.trim() && searchType === 'web' && results.length === 0" class="results">
-      <div class="loading">未找到相关结果</div>
-    </div>
-
-    <!-- 搜索结果 -->
-    <div v-else-if="searchType === 'web' && results.length > 0" class="results">
-      <div class="result-item" v-for="result in results" :key="result.docId">
-        <div class="result-title">{{ result.title }}</div>
-        <div class="result-url">{{ result.url }}</div>
-        <div class="result-summary">{{ result.summary }}</div>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>北辰全文检索</span>
       </div>
-    </div>
+      <div class="status-pill">在线</div>
+    </header>
 
-    <!-- 关键词推荐结果 -->
-    <div v-else-if="searchType === 'keyword' && suggestions.length > 0" class="suggestions">
-      <div 
-        class="suggestion-item" 
-        v-for="(suggestion, index) in suggestions" 
-        :key="index"
-        @click="clickSuggestion(suggestion)"
-      >
-        {{ suggestion }}
-      </div>
-    </div>
+    <main>
+      <section class="hero">
+        <h1>北辰全文检索</h1>
+      </section>
+
+      <section class="search-shell">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input
+            type="text"
+            v-model="query"
+            @keyup.enter="search"
+            @input="onInput"
+            @focus="onFocus"
+            @blur="onBlur"
+            placeholder="搜索网页、标题或关键词"
+            autocomplete="off"
+          >
+          <button v-if="query" class="clear-btn" type="button" @mousedown.prevent @click="clearQuery" aria-label="清空搜索">
+            ×
+          </button>
+          <button class="search-btn" type="button" @mousedown.prevent @click="search" :disabled="loading || !query.trim()">
+            搜索
+          </button>
+        </div>
+
+        <div v-if="showSuggestPanel" class="suggest-panel">
+          <div class="panel-head">
+            <span>{{ query.trim() ? '关键词推荐' : '最近搜索' }}</span>
+            <button v-if="!query.trim() && searchHistory.length" class="ghost-btn" type="button" @mousedown.prevent @click="clearHistory">
+              清除历史
+            </button>
+          </div>
+
+          <ul v-if="query.trim() && keywordSuggestions.length" class="suggest-list">
+            <li v-for="(suggestion, index) in keywordSuggestions" :key="suggestion + index">
+              <button class="suggest-item" type="button" @mousedown.prevent @click="selectSuggestion(suggestion)">
+                <span class="suggest-label">{{ suggestion }}</span>
+                <span class="suggest-meta">搜索</span>
+              </button>
+            </li>
+          </ul>
+
+          <ul v-else-if="!query.trim() && searchHistory.length" class="suggest-list">
+            <li v-for="item in searchHistory" :key="item">
+              <button class="suggest-item" type="button" @mousedown.prevent @click="selectHistory(item)">
+                <span class="suggest-label">{{ item }}</span>
+                <span class="suggest-meta">历史</span>
+              </button>
+            </li>
+          </ul>
+
+          <div v-else-if="isSuggestLoading" class="panel-empty">正在获取推荐...</div>
+          <div v-else-if="query.trim()" class="panel-empty">暂无推荐。</div>
+          <div v-else class="panel-empty">暂无搜索历史。</div>
+        </div>
+      </section>
+
+      <section v-if="loading || error || lastSearchedQuery" class="results">
+        <div class="results-head">
+          <div>
+            <span v-if="lastSearchedQuery">搜索结果：</span>
+            <span v-if="lastSearchedQuery" class="results-query">{{ lastSearchedQuery }}</span>
+            <span v-else>搜索结果</span>
+          </div>
+          <div v-if="!loading && !error && lastSearchedQuery">{{ results.length }} 条结果</div>
+        </div>
+
+        <div v-if="loading" class="state">正在搜索，请稍候...</div>
+        <div v-else-if="error" class="state error">{{ error }}</div>
+        <div v-else-if="results.length === 0" class="state">未找到相关结果，可以换一个关键词再试。</div>
+
+        <template v-else>
+          <article class="result-item" v-for="result in results" :key="result.docId">
+            <a
+              v-if="result.url"
+              class="result-title"
+              :href="result.url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ result.title || "无标题网页" }}
+            </a>
+            <div v-else class="result-title">{{ result.title || "无标题网页" }}</div>
+            <div v-if="result.url" class="result-url">{{ result.url }}</div>
+            <div class="result-summary">{{ result.summary || "暂无摘要" }}</div>
+            <div class="result-meta">
+              <span v-if="result.docId !== undefined">Doc {{ result.docId }}</span>
+              <span v-if="result.score !== undefined">Score {{ Number(result.score).toFixed(4) }}</span>
+            </div>
+          </article>
+        </template>
+      </section>
+
+      <section v-else class="welcome">
+        准备搜索
+      </section>
+    </main>
   </div>
 
   <script type="module" src="/src/main.js"></script>

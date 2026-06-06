@@ -1,76 +1,199 @@
-import { createApp, ref } from 'vue'
+import { createApp, onMounted, ref } from 'vue'
 import axios from 'axios'
+
+const HISTORY_KEY = 'search-engine-history'
+const HISTORY_LIMIT = 8
 
 createApp({
   setup() {
     const query = ref('')
-    const searchType = ref('web')
     const results = ref([])
-    const suggestions = ref([])
+    const keywordSuggestions = ref([])
+    const searchHistory = ref([])
+    const lastSearchedQuery = ref('')
     const loading = ref(false)
     const error = ref('')
-    let debounceTimer = null
+    const showSuggestPanel = ref(false)
+    const isSuggestLoading = ref(false)
 
-    const search = async () => {
-      if (!query.value.trim()) return
-      
-      loading.value = true
-      error.value = ''
-      results.value = []
-      suggestions.value = []
+    let debounceTimer = null
+    let suggestRequestId = 0
+    let blurTimer = null
+
+    const normalizeQuery = () => query.value.trim()
+
+    const formatError = (e, fallback) => {
+      if (e.response) {
+        return e.response.data?.message || `${fallback}: ${e.response.status}`
+      }
+      if (e.request) {
+        return '网络错误: 无法连接到服务器'
+      }
+      return `${fallback}: ${e.message}`
+    }
+
+    const loadHistory = () => {
+      try {
+        const raw = window.localStorage.getItem(HISTORY_KEY)
+        const parsed = raw ? JSON.parse(raw) : []
+        searchHistory.value = Array.isArray(parsed)
+          ? parsed.filter(item => typeof item === 'string' && item.trim()).slice(0, HISTORY_LIMIT)
+          : []
+      } catch (e) {
+        console.warn('读取搜索历史失败:', e)
+        searchHistory.value = []
+      }
+    }
+
+    const saveHistory = (value) => {
+      const term = value.trim()
+      if (!term) return
+
+      const next = [
+        term,
+        ...searchHistory.value.filter(item => item !== term)
+      ].slice(0, HISTORY_LIMIT)
+
+      searchHistory.value = next
+      try {
+        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+      } catch (e) {
+        console.warn('保存搜索历史失败:', e)
+      }
+    }
+
+    const clearHistory = () => {
+      searchHistory.value = []
+      window.localStorage.removeItem(HISTORY_KEY)
+      showSuggestPanel.value = true
+    }
+
+    const fetchSuggestions = async () => {
+      const term = normalizeQuery()
+      const requestId = ++suggestRequestId
+
+      if (!term) {
+        keywordSuggestions.value = []
+        isSuggestLoading.value = false
+        showSuggestPanel.value = true
+        return
+      }
+
+      isSuggestLoading.value = true
+      showSuggestPanel.value = true
 
       try {
-        if (searchType.value === 'web') {
-          const response = await axios.post('/api/search', {
-            query: query.value
-          })
-          results.value = response.data.results
-        } else {
-          const response = await axios.post('/api/keyword', {
-            query: query.value
-          })
-          suggestions.value = response.data.suggestions
+        const response = await axios.post('/api/keyword', { query: term })
+        if (requestId === suggestRequestId) {
+          keywordSuggestions.value = response.data.suggestions || []
         }
       } catch (e) {
-        console.error('搜索错误:', e)
-        if (e.response) {
-          error.value = e.response.data?.message || '服务器错误: ' + e.response.status
-        } else if (e.request) {
-          error.value = '网络错误: 无法连接到服务器'
-        } else {
-          error.value = '请求失败: ' + e.message
+        if (requestId === suggestRequestId) {
+          console.error('关键词推荐错误:', e)
+          keywordSuggestions.value = []
         }
+      } finally {
+        if (requestId === suggestRequestId) {
+          isSuggestLoading.value = false
+        }
+      }
+    }
+
+    const onInput = () => {
+      clearTimeout(debounceTimer)
+      error.value = ''
+
+      if (!normalizeQuery()) {
+        ++suggestRequestId
+        keywordSuggestions.value = []
+        isSuggestLoading.value = false
+        showSuggestPanel.value = true
+        return
+      }
+
+      debounceTimer = setTimeout(fetchSuggestions, 300)
+    }
+
+    const search = async () => {
+      const term = normalizeQuery()
+      if (!term || loading.value) return
+
+      clearTimeout(debounceTimer)
+      ++suggestRequestId
+      showSuggestPanel.value = false
+      isSuggestLoading.value = false
+      error.value = ''
+      loading.value = true
+      lastSearchedQuery.value = term
+
+      try {
+        const response = await axios.post('/api/search', { query: term })
+        results.value = response.data.results || []
+        saveHistory(term)
+      } catch (e) {
+        console.error('搜索错误:', e)
+        error.value = formatError(e, '搜索失败')
       } finally {
         loading.value = false
       }
     }
 
-    const onInput = () => {
-      // 关键词推荐：用户输入时实时推荐
-      if (searchType.value === 'keyword' && query.value.trim()) {
-        clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(() => {
-          search()
-        }, 300)
-      }
-    }
-
-    const clickSuggestion = (suggestion) => {
+    const selectSuggestion = (suggestion) => {
       query.value = suggestion
-      searchType.value = 'web'
       search()
     }
 
+    const selectHistory = (value) => {
+      query.value = value
+      search()
+    }
+
+    const clearQuery = () => {
+      query.value = ''
+      keywordSuggestions.value = []
+      isSuggestLoading.value = false
+      showSuggestPanel.value = true
+      ++suggestRequestId
+    }
+
+    const onFocus = () => {
+      clearTimeout(blurTimer)
+      showSuggestPanel.value = true
+
+      if (normalizeQuery() && keywordSuggestions.value.length === 0) {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(fetchSuggestions, 300)
+      }
+    }
+
+    const onBlur = () => {
+      blurTimer = setTimeout(() => {
+        showSuggestPanel.value = false
+      }, 160)
+    }
+
+    onMounted(() => {
+      loadHistory()
+    })
+
     return {
       query,
-      searchType,
       results,
-      suggestions,
+      keywordSuggestions,
+      searchHistory,
+      lastSearchedQuery,
       loading,
       error,
+      showSuggestPanel,
+      isSuggestLoading,
       search,
       onInput,
-      clickSuggestion
+      onFocus,
+      onBlur,
+      clearQuery,
+      clearHistory,
+      selectSuggestion,
+      selectHistory
     }
   }
 }).mount('#app')
